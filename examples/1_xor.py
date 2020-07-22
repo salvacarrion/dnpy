@@ -52,7 +52,7 @@ def main():
         opt=SGD(lr=1.0),
         losses=[losses.MSE()],
         metrics=[metrics.MAE()],
-        debug=True
+        debug=False
     )
 
     # Print model
