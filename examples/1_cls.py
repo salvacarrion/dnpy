@@ -30,7 +30,7 @@ def main():
 
     # Params *********************************
     batch_size = len(x_train)
-    epochs = 10
+    epochs = 5
 
     # Define architecture
     l_in = Input(shape=(len(X[0]),))
@@ -48,7 +48,7 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        opt=SGD(lr=0.01),
+        opt=SGD(lr=0.1),
         losses=[losses.BinaryCrossEntropy()],
         metrics=[metrics.CategoricalAccuracy()],
         debug=False

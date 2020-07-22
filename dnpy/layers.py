@@ -70,18 +70,18 @@ class Dense(Layer):
 
         # Initialization: param
         if kernel_initializer is None:
-            self.kernel_initializer = initializers.RandomNormal()
+            self.kernel_initializer = initializers.RandomUniform()
 
         # Initialization: bias
         if bias_initializer is None:
-            self.bias_initializer = initializers.Zeros()
+            self.bias_initializer = initializers.Ones()
 
     def initialize(self):
         self.kernel_initializer.apply(self.params, ['w1'])
         self.bias_initializer.apply(self.params, ['b1'])
 
     def forward(self):
-        self.output = np.dot(self.params['w1'].T, self.parent.output) + self.params['b1']
+        self.output = np.dot(self.params['w1'], self.parent.output) + self.params['b1']
 
     def backward(self):
         # Each layer sets the delta of their parent (13,m)=>(10,m)=>(1,m)=>(1,1)
@@ -89,7 +89,7 @@ class Dense(Layer):
 
         # Compute gradients
         m = self.output.shape[-1]
-        self.grads['g_w1'] += np.dot(self.delta, self.parent.output.T)/m
+        # self.grads['g_w1'] += np.dot(self.delta, self.parent.output.T)/m
         self.grads['g_b1'] += np.sum(self.delta, axis=1, keepdims=True)/m
 
 
@@ -143,6 +143,11 @@ class Softmax(Layer):
         self.output = exps/sums
 
     def backward(self):
-        SM = self.output.reshape((-1, 1))
-        jaccobian = np.diagflat(self.parent.output) - np.dot(SM, SM.T)
-        self.parent.delta = np.dot(jaccobian, self.delta)
+        m = self.output.shape[-1]
+        tmp = []
+        for i in range(m):
+            SM = self.output[:, i].reshape((-1, 1))
+            jaccobian = np.diagflat(self.parent.output[:, i]) - np.dot(SM, SM.T)
+            delta_i = np.dot(jaccobian, self.delta[:, i])
+            tmp.append(delta_i)
+        self.parent.delta = np.array(tmp).T

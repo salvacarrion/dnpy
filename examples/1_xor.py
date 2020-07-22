@@ -6,17 +6,27 @@ from dnpy.optimizers import *
 from dnpy import metrics, losses
 
 # For debugging
-np.random.seed(42)
+np.random.seed(1)
 
 
 def main():
-    X = np.array([
-        [0, 0],
-        [0, 1],
-        [1, 0],
-        [1, 1],
-    ])
-    Y = np.array([[0], [1], [1], [0]])
+    # X = np.array([
+    #     [0, 0],
+    #     [0, 1],
+    #     [1, 0],
+    #     [1, 1],
+    # ])
+    # Y = np.array([[0], [1], [1], [0]])
+
+    X = np.array([[0, 0, 1],
+                  [0, 1, 1],
+                  [1, 0, 1],
+                  [1, 1, 1]])
+
+    Y = np.array([[0],
+                  [1],
+                  [1],
+                  [0]])
 
     x_train, y_train = X, Y
     x_test, y_test = X, Y
@@ -28,8 +38,8 @@ def main():
     # Define architecture
     l_in = Input(shape=(len(X[0]),))
     l = l_in
-    l = Dense(l, 2)
-    l = Relu(l)
+    l = Dense(l, 4)
+    l = Sigmoid(l)
     l = Dense(l, 1)
     l = Sigmoid(l)
     l_out = l
@@ -41,8 +51,8 @@ def main():
         l_out=[l_out],
         opt=SGD(lr=0.1),
         losses=[losses.MSE()],
-        metrics=[metrics.BinaryAccuracy()],
-        debug=True
+        metrics=[metrics.MSE()],
+        debug=False
     )
 
     # Print model

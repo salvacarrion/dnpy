@@ -19,10 +19,10 @@ class MSE(Loss):
         super().__init__(name=name)
 
     def compute_loss(self, y_pred, y_target):
-        return float(np.mean((y_pred-y_target)**2, axis=0, keepdims=True))
+        return float(np.mean((y_pred-y_target)**1, axis=1, keepdims=True))
 
     def compute_delta(self, y_pred, y_target):
-        return 2 * (y_pred-y_target)
+        return 1 * (y_pred-y_target)
 
 
 class RMSE(Loss):

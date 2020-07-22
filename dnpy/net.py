@@ -174,8 +174,8 @@ class Net:
     def forward(self):
         for l in self.fts_layers:
             l.forward()
-            print(l.name)
-            print(l.output)
+            # print(l.name)
+            # print(l.output)
 
     def backward(self):
         for l in self.bts_layers:
