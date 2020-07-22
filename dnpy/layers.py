@@ -25,20 +25,26 @@ class Layer:
     def backward(self):
         pass
 
-    def print_stats(self):
-        if self.parent is None:
-            print(f"\t=> [DEBUG]{self.name}: Nothing to print")
-        else:
+    def print_stats(self, print_tensors=False):
             print(f"\t=> [DEBUG]: {self.name} layer:")
-            print(f"\t\t [input]\tshape={self.parent.output.shape}; max={float(np.max(self.parent.output))}; min={float(np.min(self.parent.output))}; avg={float(np.mean(self.parent.output))}")
+            if self.parent is not None:
+                print(f"\t\t [input]\tshape={self.parent.output.shape}; max={float(np.max(self.parent.output))}; min={float(np.min(self.parent.output))}; avg={float(np.mean(self.parent.output))}")
+                if print_tensors: print(self.parent.output)
+
             print(f"\t\t [output]\tshape={self.output.shape}; max={float(np.max(self.output))}; min={float(np.min(self.output))}; avg={float(np.mean(self.output))}")
-            print(f"\t\t [delta]\tshape={self.delta.shape}; max={float(np.max(self.delta))}; min={float(np.min(self.delta))}; avg={float(np.mean(self.delta))}")
+            if print_tensors: print(self.output)
+
+            if self.delta is not None:
+                print(f"\t\t [delta]\tshape={self.delta.shape}; max={float(np.max(self.delta))}; min={float(np.min(self.delta))}; avg={float(np.mean(self.delta))}")
+                if print_tensors: print(self.delta)
 
             for k in self.params.keys():
                 print(f"\t\t [{k}]\tshape={self.params[k].shape}; max={float(np.max(self.params[k]))}; min={float(np.min(self.params[k]))}; avg={float(np.mean(self.params[k]))}")
+                if print_tensors: print(self.params[k])
 
             for k in self.grads.keys():
                 print(f"\t\t [{k}]\tshape={self.grads[k].shape}; max={float(np.max(self.grads[k]))}; min={float(np.min(self.grads[k]))}; avg={float(np.mean(self.grads[k]))}")
+                if print_tensors: print(self.grads[k])
 
 
 class Input(Layer):

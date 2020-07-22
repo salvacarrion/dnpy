@@ -173,16 +173,19 @@ class Net:
                 l.grads[k].fill(0.0)
 
     def forward(self):
+        print("FORWARD:")
         for l in self.fts_layers:
             l.forward()
-            # print(l.name)
-            # print(l.output)
-
-    def backward(self):
-        for l in self.bts_layers:
             if self.debug:
                 l.print_stats()
+
+    def backward(self):
+        print("BACKWARD:")
+
+        for l in self.bts_layers:
             l.backward()
+            if self.debug:
+                l.print_stats()
 
     def apply_grads(self):
         for l in self.bts_layers:
