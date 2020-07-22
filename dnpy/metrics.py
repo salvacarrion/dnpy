@@ -17,7 +17,7 @@ class MSE(Metric):
         super().__init__(name=name)
 
     def compute_metric(self, y_pred, y_target):
-        return float(np.mean((y_pred-y_target)**2, axis=1))
+        return float(np.mean((y_target-y_pred)**1, axis=0))
 
 
 class RMSE(Metric):
@@ -35,7 +35,7 @@ class MAE(Metric):
         super().__init__(name=name)
 
     def compute_metric(self, y_pred, y_target):
-        return float(np.mean(np.abs(y_pred-y_target), axis=1))
+        return float(np.mean(np.abs(y_target-y_pred), axis=0))
 
 
 class BinaryAccuracy(Metric):

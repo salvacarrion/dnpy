@@ -73,13 +73,13 @@ class Net:
         print(f"========================")
 
         for i in range(epochs):
-            print(f"Epoch {i+1}/{epochs}...")
+            # print(f"Epoch {i+1}/{epochs}...")
 
             for b in range(num_batches):
                 # Select mini-bach
                 idx = b*batch_size
-                x_train_mb = x_train[idx:idx+batch_size].T
-                y_train_mb = y_train[idx:idx+batch_size].T
+                x_train_mb = x_train[idx:idx+batch_size]
+                y_train_mb = y_train[idx:idx+batch_size]
 
                 # Forward
                 self.l_in[0].input = x_train_mb  # TODO: Temp!
@@ -87,9 +87,10 @@ class Net:
 
                 # Compute loss and metrics
                 b_losses = self.compute_losses(y_pred=self.l_out[0].output, y_target=y_train_mb)  # TODO: Temp!
-                b_metrics = self.compute_metrics(y_pred=self.l_out[0].output, y_target=y_train_mb)  # TODO: Temp!
-                str_eval = self._format_eval(b_losses, b_metrics)
-                print(f"\t - Batch {b+1}/{num_batches} - Training losses[{'; '.join(str_eval[0])}]; Training metrics[{'; '.join(str_eval[1])}]")
+                if (i % 10000) == 0:
+                    b_metrics = self.compute_metrics(y_pred=self.l_out[0].output, y_target=y_train_mb)  # TODO: Temp!
+                    str_eval = self._format_eval(b_losses, b_metrics)
+                    print(f"\t - Batch {b+1}/{num_batches} - Training losses[{'; '.join(str_eval[0])}]; Training metrics[{'; '.join(str_eval[1])}]")
 
                 # Backward
                 self.reset_grads()
@@ -97,7 +98,7 @@ class Net:
                 self.backward()
                 self.apply_grads()
 
-            if evaluate_epoch:
+            if evaluate_epoch and (i % 10000) == 0:
                 # Evaluate train
                 lo, me = self.evaluate(x_train, y_train, batch_size=1)
                 str_eval = self._format_eval(lo, np.mean(me, axis=0))
@@ -123,8 +124,8 @@ class Net:
         for b in range(num_batches):
             # Select mini-bach
             idx = b * batch_size
-            x_test_mb = x_test[idx:idx + batch_size].T
-            y_test_mb = y_test[idx:idx + batch_size].T
+            x_test_mb = x_test[idx:idx + batch_size]
+            y_test_mb = y_test[idx:idx + batch_size]
 
             # Forward
             self.l_in[0].input = x_test_mb  # TODO: Temp!
@@ -208,7 +209,7 @@ class Net:
         print('==================================')
 
         # Create a dummy input
-        input_shape = tuple(list(self.l_in[0].oshape) + [batch_size])
+        input_shape = tuple([batch_size] + list(self.l_in[0].oshape))
         dummy_x = np.random.rand(*input_shape)
 
         # Forward

@@ -59,12 +59,12 @@ class Dense(Layer):
     def __init__(self, l_in, units, kernel_initializer=None, bias_initializer=None):
         super().__init__(name="Dense")
         self.parent = l_in
-        self.oshape = (units, 1)
+        self.oshape = (1, units)
         self.units = units
 
         # Params and grads
-        self.params = {'w1': np.zeros((self.units, self.parent.oshape[0])),
-                       'b1': np.zeros((self.units, 1))}
+        self.params = {'w1': np.zeros((self.parent.oshape[-1], self.units)),
+                       'b1': np.zeros((1, self.units))}
         self.grads = {'g_w1': np.zeros_like(self.params['w1']),
                       'g_b1': np.zeros_like(self.params['b1'])}
 
@@ -81,16 +81,17 @@ class Dense(Layer):
         self.bias_initializer.apply(self.params, ['b1'])
 
     def forward(self):
-        self.output = np.dot(self.params['w1'], self.parent.output) + self.params['b1']
+        self.output = np.dot(self.parent.output, self.params['w1']) # + self.params['b1']
 
     def backward(self):
         # Each layer sets the delta of their parent (13,m)=>(10,m)=>(1,m)=>(1,1)
-        self.parent.delta = np.dot(self.params['w1'].T, self.delta)
+        self.parent.delta = self.delta.dot(self.params['w1'].T)
 
         # Compute gradients
         m = self.output.shape[-1]
-        # self.grads['g_w1'] += np.dot(self.delta, self.parent.output.T)/m
-        self.grads['g_b1'] += np.sum(self.delta, axis=1, keepdims=True)/m
+        g1 = self.parent.output.T.dot(self.delta)
+        self.grads['g_w1'] += g1
+        # self.grads['g_b1'] += np.sum(self.delta, axis=1, keepdims=True)/m
 
 
 class Relu(Layer):

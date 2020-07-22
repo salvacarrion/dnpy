@@ -14,7 +14,7 @@ class SGD(Optimizer):
 
     def apply(self, params, grads):
         for k in params.keys():
-            params[k] -= self.lr * grads["g_"+k]
+            params[k] += self.lr * grads["g_"+k]
 
 
 class Momentum(Optimizer):

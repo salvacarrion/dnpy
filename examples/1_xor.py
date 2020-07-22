@@ -33,7 +33,7 @@ def main():
 
     # Params *********************************
     batch_size = len(x_train)
-    epochs = 10
+    epochs = 60000
 
     # Define architecture
     l_in = Input(shape=(len(X[0]),))
@@ -49,9 +49,9 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        opt=SGD(lr=0.1),
+        opt=SGD(lr=1.0),
         losses=[losses.MSE()],
-        metrics=[metrics.MSE()],
+        metrics=[metrics.MAE()],
         debug=False
     )
 
