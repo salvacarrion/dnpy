@@ -15,10 +15,10 @@ def main():
                   [1, 0, 1],
                   [1, 1, 1]])
 
-    Y = np.array([[-1],
+    Y = np.array([[0],
                   [1],
                   [1],
-                  [-1]])
+                  [0]])
 
     x_train, y_train = X, Y
     x_test, y_test = X, Y
@@ -30,10 +30,10 @@ def main():
     # Define architecture
     l_in = Input(shape=(len(X[0]),))
     l = l_in
-    l = Dense(l, 3)
-    l = Relu(l)
+    l = Dense(l, 4)
+    l = Sigmoid(l)
     l = Dense(l, 1)
-    # l = Sigmoid(l)
+    l = Sigmoid(l)
     l_out = l
 
     # Build network
@@ -41,8 +41,8 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        opt=SGD(lr=0.01),
-        losses=[losses.Hinge()],
+        opt=SGD(lr=1.0),
+        losses=[losses.BinaryCrossEntropy()],
         metrics=[metrics.BinaryAccuracy()],
         debug=False
     )

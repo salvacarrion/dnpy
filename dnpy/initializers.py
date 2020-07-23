@@ -57,5 +57,4 @@ class RandomUniform(Initializer):
     def apply(self, params, keys=None):
         keys = keys if keys else params.keys()
         for k in keys:
-            # params[k] = (self.maxval-self.minval) * np.random.rand(*params[k].shape) + self.minval
-            params[k] = 2.0 * np.random.random(params[k].shape) - 1.0
+            params[k] = (self.maxval-self.minval) * np.random.random(params[k].shape) + self.minval
