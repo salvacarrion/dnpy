@@ -65,12 +65,12 @@ class Dense(Layer):
     def __init__(self, l_in, units, kernel_initializer=None, bias_initializer=None):
         super().__init__(name="Dense")
         self.parent = l_in
-        self.oshape = (1, units)
+        self.oshape = (units, 1)
         self.units = units
 
         # Params and grads
-        self.params = {'w1': np.zeros((self.parent.oshape[-1], self.units)),
-                       'b1': np.zeros((1, self.units))}
+        self.params = {'w1': np.zeros((self.parent.oshape[0], self.units)),
+                       'b1': np.zeros((self.units, 1))}
         self.grads = {'g_w1': np.zeros_like(self.params['w1']),
                       'g_b1': np.zeros_like(self.params['b1'])}
 
@@ -87,17 +87,16 @@ class Dense(Layer):
         self.bias_initializer.apply(self.params, ['b1'])
 
     def forward(self):
-        self.output = np.dot(self.parent.output, self.params['w1']) # + self.params['b1']
+        self.output = np.dot(self.params['w1'].T, self.parent.output) + self.params['b1']
 
     def backward(self):
         # Each layer sets the delta of their parent (13,m)=>(10,m)=>(1,m)=>(1,1)
-        self.parent.delta = self.delta.dot(self.params['w1'].T)
+        self.parent.delta = np.dot(self.params['w1'], self.delta)
 
         # Compute gradients
         m = self.output.shape[-1]
-        g1 = self.parent.output.T.dot(self.delta)
-        self.grads['g_w1'] += g1
-        # self.grads['g_b1'] += np.sum(self.delta, axis=1, keepdims=True)/m
+        self.grads['g_w1'] += np.dot(self.parent.output, self.delta.T)/m
+        self.grads['g_b1'] += np.sum(self.delta, axis=1, keepdims=True)/m
 
 
 class Relu(Layer):
@@ -125,28 +124,32 @@ class Sigmoid(Layer):
         self.parent = l_in
 
         self.oshape = self.parent.oshape
-        self.tmp = None
 
     def forward(self):
         self.output = 1.0 / (1.0 + np.exp(-self.parent.output))
-        self.tmp = self.output
 
     def backward(self):
         # Each layer sets the delta of their parent (13,m)=>(10,m)=>(1,m)=>(1,1)
-        self.parent.delta = self.delta * (self.tmp * (1 - self.tmp))
+        self.parent.delta = self.delta * (self.output * (1 - self.output))
 
 
 class Softmax(Layer):
 
-    def __init__(self, l_in):
+    def __init__(self, l_in, stable=True):
         super().__init__(name="Softmax")
         self.parent = l_in
-
         self.oshape = self.parent.oshape
 
+        self.stable = stable
+
     def forward(self):
-        exps = np.exp(self.parent.output)
-        sums = np.sum(np.exp(self.parent.output), axis=0, keepdims=True)
+        if self.stable:
+            z = self.parent.output - np.max(self.parent.output, axis=0, keepdims=True)
+        else:
+            z = self.parent.output
+
+        exps = np.exp(z)
+        sums = np.sum(np.exp(z), axis=0, keepdims=True)
         self.output = exps/sums
 
     def backward(self):

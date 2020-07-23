@@ -10,14 +10,6 @@ np.random.seed(1)
 
 
 def main():
-    # X = np.array([
-    #     [0, 0],
-    #     [0, 1],
-    #     [1, 0],
-    #     [1, 1],
-    # ])
-    # Y = np.array([[0], [1], [1], [0]])
-
     X = np.array([[0, 0, 1],
                   [0, 1, 1],
                   [1, 0, 1],
@@ -38,8 +30,8 @@ def main():
     # Define architecture
     l_in = Input(shape=(len(X[0]),))
     l = l_in
-    l = Dense(l, 4)
-    l = Sigmoid(l)
+    l = Dense(l, 3)
+    l = Relu(l)
     l = Dense(l, 1)
     l = Sigmoid(l)
     l_out = l
@@ -49,20 +41,21 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        opt=SGD(lr=1.0),
-        losses=[losses.MSE()],
-        metrics=[metrics.MAE()],
+        opt=SGD(lr=0.0001),
+        losses=[losses.BinaryCrossEntropy()],
+        metrics=[metrics.BinaryAccuracy()],
         debug=False
     )
 
     # Print model
-    mymodel.summary(batch_size=batch_size)
+    # mymodel.summary(batch_size=batch_size)
 
     # Train
     mymodel.fit(x_train, y_train,
                 x_test=x_test, y_test=y_test,
                 batch_size=batch_size, epochs=epochs,
-                evaluate_epoch=True)
+                evaluate_epoch=True,
+                print_rate=100)
 
     # # Evaluate
     # m = mymodel.evaluate(x_test, y_test, batch_size=batch_size)
