@@ -62,6 +62,8 @@ class CategoricalAccuracy(Metric):
         super().__init__(name=name)
 
     def compute_metric(self, y_pred, y_target):
+        y_pred, y_target = y_pred.T, y_target.T
+
         # Get maximum values (aka. predicted class)
         y_target_best_class = np.argmax(y_target, axis=1)
         y_pred_best_class = np.argmax(y_pred, axis=1)

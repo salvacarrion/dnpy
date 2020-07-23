@@ -25,20 +25,26 @@ class Layer:
     def backward(self):
         pass
 
-    def print_stats(self):
-        if self.parent is None:
-            print(f"\t=> [DEBUG]{self.name}: Nothing to print")
-        else:
+    def print_stats(self, print_tensors=False):
             print(f"\t=> [DEBUG]: {self.name} layer:")
-            print(f"\t\t [input]\tshape={self.parent.output.shape}; max={float(np.max(self.parent.output))}; min={float(np.min(self.parent.output))}; avg={float(np.mean(self.parent.output))}")
+            if self.parent is not None:
+                print(f"\t\t [input]\tshape={self.parent.output.shape}; max={float(np.max(self.parent.output))}; min={float(np.min(self.parent.output))}; avg={float(np.mean(self.parent.output))}")
+                if print_tensors: print(self.parent.output)
+
             print(f"\t\t [output]\tshape={self.output.shape}; max={float(np.max(self.output))}; min={float(np.min(self.output))}; avg={float(np.mean(self.output))}")
-            print(f"\t\t [delta]\tshape={self.delta.shape}; max={float(np.max(self.delta))}; min={float(np.min(self.delta))}; avg={float(np.mean(self.delta))}")
+            if print_tensors: print(self.output)
+
+            if self.delta is not None:
+                print(f"\t\t [delta]\tshape={self.delta.shape}; max={float(np.max(self.delta))}; min={float(np.min(self.delta))}; avg={float(np.mean(self.delta))}")
+                if print_tensors: print(self.delta)
 
             for k in self.params.keys():
                 print(f"\t\t [{k}]\tshape={self.params[k].shape}; max={float(np.max(self.params[k]))}; min={float(np.min(self.params[k]))}; avg={float(np.mean(self.params[k]))}")
+                if print_tensors: print(self.params[k])
 
             for k in self.grads.keys():
                 print(f"\t\t [{k}]\tshape={self.grads[k].shape}; max={float(np.max(self.grads[k]))}; min={float(np.min(self.grads[k]))}; avg={float(np.mean(self.grads[k]))}")
+                if print_tensors: print(self.grads[k])
 
 
 class Input(Layer):
@@ -63,7 +69,7 @@ class Dense(Layer):
         self.units = units
 
         # Params and grads
-        self.params = {'w1': np.zeros((self.units, self.parent.oshape[0])),
+        self.params = {'w1': np.zeros((self.parent.oshape[0], self.units)),
                        'b1': np.zeros((self.units, 1))}
         self.grads = {'g_w1': np.zeros_like(self.params['w1']),
                       'g_b1': np.zeros_like(self.params['b1'])}
@@ -81,15 +87,15 @@ class Dense(Layer):
         self.bias_initializer.apply(self.params, ['b1'])
 
     def forward(self):
-        self.output = np.dot(self.params['w1'], self.parent.output) + self.params['b1']
+        self.output = np.dot(self.params['w1'].T, self.parent.output) + self.params['b1']
 
     def backward(self):
         # Each layer sets the delta of their parent (13,m)=>(10,m)=>(1,m)=>(1,1)
-        self.parent.delta = np.dot(self.params['w1'].T, self.delta)
+        self.parent.delta = np.dot(self.params['w1'], self.delta)
 
         # Compute gradients
         m = self.output.shape[-1]
-        # self.grads['g_w1'] += np.dot(self.delta, self.parent.output.T)/m
+        self.grads['g_w1'] += np.dot(self.parent.output, self.delta.T)/m
         self.grads['g_b1'] += np.sum(self.delta, axis=1, keepdims=True)/m
 
 
@@ -118,28 +124,32 @@ class Sigmoid(Layer):
         self.parent = l_in
 
         self.oshape = self.parent.oshape
-        self.tmp = None
 
     def forward(self):
         self.output = 1.0 / (1.0 + np.exp(-self.parent.output))
-        self.tmp = self.output
 
     def backward(self):
         # Each layer sets the delta of their parent (13,m)=>(10,m)=>(1,m)=>(1,1)
-        self.parent.delta = self.delta * (self.tmp * (1 - self.tmp))
+        self.parent.delta = self.delta * (self.output * (1 - self.output))
 
 
 class Softmax(Layer):
 
-    def __init__(self, l_in):
+    def __init__(self, l_in, stable=True):
         super().__init__(name="Softmax")
         self.parent = l_in
-
         self.oshape = self.parent.oshape
 
+        self.stable = stable
+
     def forward(self):
-        exps = np.exp(self.parent.output)
-        sums = np.sum(np.exp(self.parent.output), axis=0, keepdims=True)
+        if self.stable:
+            z = self.parent.output - np.max(self.parent.output, axis=0, keepdims=True)
+        else:
+            z = self.parent.output
+
+        exps = np.exp(z)
+        sums = np.sum(np.exp(z), axis=0, keepdims=True)
         self.output = exps/sums
 
     def backward(self):

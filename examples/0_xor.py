@@ -6,38 +6,34 @@ from dnpy.optimizers import *
 from dnpy import metrics, losses
 
 # For debugging
-# np.random.seed(123)
-
-# import keras
+np.random.seed(1)
 
 
-def mlp_regression():
-    # Load data  ******************************
-    X, Y = load_boston(return_X_y=True)
-    Y = np.reshape(Y, (len(Y), 1))
+def main():
+    X = np.array([[0, 0, 1],
+                  [0, 1, 1],
+                  [1, 0, 1],
+                  [1, 1, 1]])
 
-    # Shuffle data
-    idxs = np.arange(len(X))
-    np.random.shuffle(idxs)
-    X, Y = X[idxs], Y[idxs]
+    Y = np.array([[0],
+                  [1],
+                  [1],
+                  [0]])
 
-    # Split data
-    c = 0.9
-    ds_size = int(len(X) * c)
-    x_train, y_train = X[:ds_size], Y[:ds_size]
-    x_test, y_test = X[ds_size:], Y[ds_size:]
+    x_train, y_train = X, Y
+    x_test, y_test = X, Y
 
     # Params *********************************
     batch_size = len(x_train)
-    epochs = 10
+    epochs = 60000
 
     # Define architecture
     l_in = Input(shape=(len(X[0]),))
     l = l_in
-    l = Dense(l, 15)
+    l = Dense(l, 3)
     l = Relu(l)
     l = Dense(l, 1)
-    l = Relu(l)
+    l = Sigmoid(l)
     l_out = l
 
     # Build network
@@ -45,23 +41,25 @@ def mlp_regression():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        opt=SGD(lr=0.01),
-        losses=[losses.MSE()],
-        metrics=[metrics.MSE()],
+        opt=SGD(lr=0.0001),
+        losses=[losses.BinaryCrossEntropy()],
+        metrics=[metrics.BinaryAccuracy()],
+        debug=False
     )
 
     # Print model
-    mymodel.summary(batch_size=batch_size)
+    # mymodel.summary(batch_size=batch_size)
 
     # Train
     mymodel.fit(x_train, y_train,
                 x_test=x_test, y_test=y_test,
                 batch_size=batch_size, epochs=epochs,
-                evaluate_epoch=False)
+                evaluate_epoch=True,
+                print_rate=100)
 
     # # Evaluate
     # m = mymodel.evaluate(x_test, y_test, batch_size=batch_size)
 
 
 if __name__ == "__main__":
-    mlp_regression()
+    main()

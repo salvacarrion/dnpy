@@ -1,5 +1,5 @@
+import math
 import numpy as np
-
 
 class Net:
 
@@ -60,7 +60,8 @@ class Net:
             layer = layer.parent
         self.bts_layers.append(layer)  # Add last
 
-    def fit(self, x_train, y_train, batch_size, epochs, x_test=None, y_test=None, evaluate_epoch=True):
+    def fit(self, x_train, y_train, batch_size, epochs, x_test=None, y_test=None, evaluate_epoch=True,
+            print_rate=1):
         assert x_train.shape[0] == y_train.shape[0]
         # assert y_train.shape[1:] == self.l_out[0].oshape
         assert batch_size <= len(x_train)
@@ -73,7 +74,8 @@ class Net:
         print(f"========================")
 
         for i in range(epochs):
-            print(f"Epoch {i+1}/{epochs}...")
+            if (i % print_rate) == 0:
+                print(f"Epoch {i+1}/{epochs}...")
 
             for b in range(num_batches):
                 # Select mini-bach
@@ -87,9 +89,10 @@ class Net:
 
                 # Compute loss and metrics
                 b_losses = self.compute_losses(y_pred=self.l_out[0].output, y_target=y_train_mb)  # TODO: Temp!
-                b_metrics = self.compute_metrics(y_pred=self.l_out[0].output, y_target=y_train_mb)  # TODO: Temp!
-                str_eval = self._format_eval(b_losses, b_metrics)
-                print(f"\t - Batch {b+1}/{num_batches} - Training losses[{'; '.join(str_eval[0])}]; Training metrics[{'; '.join(str_eval[1])}]")
+                if (i % print_rate) == 0:
+                    b_metrics = self.compute_metrics(y_pred=self.l_out[0].output, y_target=y_train_mb)  # TODO: Temp!
+                    str_eval = self._format_eval(b_losses, b_metrics)
+                    print(f"\t - Batch {b+1}/{num_batches} - Losses[{'; '.join(str_eval[0])}]; Metrics[{'; '.join(str_eval[1])}]")
 
                 # Backward
                 self.reset_grads()
@@ -97,7 +100,7 @@ class Net:
                 self.backward()
                 self.apply_grads()
 
-            if evaluate_epoch:
+            if evaluate_epoch and (i % print_rate) == 0:
                 # Evaluate train
                 lo, me = self.evaluate(x_train, y_train, batch_size=1)
                 str_eval = self._format_eval(lo, np.mean(me, axis=0))
@@ -174,14 +177,14 @@ class Net:
     def forward(self):
         for l in self.fts_layers:
             l.forward()
-            # print(l.name)
-            # print(l.output)
+            if self.debug:
+                l.print_stats()
 
     def backward(self):
         for l in self.bts_layers:
+            l.backward()
             if self.debug:
                 l.print_stats()
-            l.backward()
 
     def apply_grads(self):
         for l in self.bts_layers:
@@ -193,6 +196,17 @@ class Net:
             loss = l.compute_loss(y_pred, y_target)
             delta = l.compute_delta(y_pred, y_target)
             losses.append((loss, delta))
+
+            # Check for errors
+            if math.isnan(loss):
+                raise ValueError("NaNs in the loss function")
+            elif math.isinf(loss):
+                raise ValueError("Inf in the loss function")
+            elif np.isnan(delta).any():
+                raise ValueError("NaNs in the delta")
+            elif np.isinf(delta).any():
+                raise ValueError("Info in the delta")
+
         return losses
 
     def compute_metrics(self, y_pred, y_target):
@@ -208,13 +222,13 @@ class Net:
         print('==================================')
 
         # Create a dummy input
-        input_shape = tuple(list(self.l_in[0].oshape) + [batch_size])
-        dummy_x = np.random.rand(*input_shape)
+        ishape = self.l_in[0].oshape
+        dummy_x = np.random.random([*ishape, batch_size])
 
         # Forward
         self.l_in[0].input = dummy_x  # TODO: Temp!
         self.forward()
 
         for i, l in enumerate(self.fts_layers):
-            p_oshape = l.output.shape if l.parent else input_shape
+            p_oshape = l.output.shape if l.parent else dummy_x.shape
             print(f"#{i+1}:\t{l.name}\t\t-\t{p_oshape}\t=>\t{l.output.shape}")
