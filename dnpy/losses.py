@@ -87,3 +87,19 @@ class CrossEntropy(Loss):
         d_loss = y_target.astype(float) * 1/y_pred
         d_loss = -1.0 * d_loss
         return d_loss
+
+
+class Hinge(Loss):
+
+    def __init__(self, name="Hinge"):
+        super().__init__(name=name)
+
+    def compute_loss(self, y_pred, y_target):
+        loss = np.maximum(0, (1-y_pred) * y_target)
+        loss = float(np.mean(loss, axis=1, keepdims=True))
+        return loss
+
+    def compute_delta(self, y_pred, y_target):
+        tmp = (y_pred >= 0).astype(float)
+        d_loss = tmp * -y_target
+        return d_loss

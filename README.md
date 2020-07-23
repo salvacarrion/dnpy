@@ -21,6 +21,7 @@ Deep learning library written from scratch in Numpy. Why? For fun... 🤷🏻‍
     - MAE
     - CrossEntropy
     - BinaryCrossEntropy
+    - Hinge
 
 - Metrics
     - MSE

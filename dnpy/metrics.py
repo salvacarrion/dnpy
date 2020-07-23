@@ -45,14 +45,14 @@ class BinaryAccuracy(Metric):
 
     def compute_metric(self, y_pred, y_target):
         # Get classes
-        y_target_best_class = y_target.astype(bool)
-        y_pred_best_class = y_pred > 0.5
+        y_target_class = y_target.astype(bool)
+        y_pred_class = (y_pred > 0.5).astype(bool)
 
         # Check class correctness
-        is_correct = y_target_best_class == y_pred_best_class
+        is_correct = y_target_class == y_pred_class
 
         # Compute accuracy
-        acc = float(np.mean(is_correct.astype(int), axis=1))
+        acc = float(np.mean(is_correct, axis=1))
         return acc
 
 

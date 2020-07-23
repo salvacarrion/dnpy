@@ -41,8 +41,8 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        opt=SGD(lr=0.0001),
-        losses=[losses.BinaryCrossEntropy()],
+        opt=SGD(lr=0.01),
+        losses=[losses.Hinge()],
         metrics=[metrics.BinaryAccuracy()],
         debug=False
     )
