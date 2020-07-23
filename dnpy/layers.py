@@ -153,11 +153,10 @@ class Softmax(Layer):
         self.output = exps/sums
 
     def backward(self):
+        self.parent.delta = np.zeros_like(self.output)
         m = self.output.shape[-1]
-        tmp = []
         for i in range(m):
             SM = self.output[:, i].reshape((-1, 1))
-            jaccobian = np.diagflat(self.parent.output[:, i]) - np.dot(SM, SM.T)
-            delta_i = np.dot(jaccobian, self.delta[:, i])
-            tmp.append(delta_i)
-        self.parent.delta = np.array(tmp).T
+            jac = np.diagflat(self.output[:, i]) - np.dot(SM, SM.T)
+            self.parent.delta[:, i] = np.dot(jac, self.delta[:, i])
+

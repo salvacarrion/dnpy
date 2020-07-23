@@ -15,10 +15,10 @@ def main():
                   [1, 0, 1],
                   [1, 1, 1]])
 
-    Y = np.array([[0],
+    Y = np.array([[-1],
                   [1],
                   [1],
-                  [0]])
+                  [-1]])
 
     x_train, y_train = X, Y
     x_test, y_test = X, Y
@@ -33,7 +33,7 @@ def main():
     l = Dense(l, 3)
     l = Relu(l)
     l = Dense(l, 1)
-    l = Sigmoid(l)
+    # l = Sigmoid(l)
     l_out = l
 
     # Build network

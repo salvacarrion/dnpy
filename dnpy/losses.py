@@ -84,6 +84,7 @@ class CrossEntropy(Loss):
         return loss
 
     def compute_delta(self, y_pred, y_target):
+        # d_loss = y_target  # Only valid when the output layer is a softmax
         d_loss = y_target.astype(float) * 1/y_pred
         d_loss = -1.0 * d_loss
         return d_loss
