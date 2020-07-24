@@ -43,22 +43,22 @@ def main():
         l_out=[l_out],
         opt=SGD(lr=1.0),
         losses=[losses.BinaryCrossEntropy()],
-        metrics=[metrics.BinaryAccuracy()],
+        metrics=[metrics.BinaryAccuracy(), metrics.MAE()],
         debug=False
     )
 
     # Print model
-    # mymodel.summary(batch_size=batch_size)
+    mymodel.summary(batch_size=batch_size)
 
     # Train
-    mymodel.fit(x_train, y_train,
-                x_test=x_test, y_test=y_test,
+    mymodel.fit([x_train], [y_train],
+                x_test=[x_test], y_test=[y_test],
                 batch_size=batch_size, epochs=epochs,
                 evaluate_epoch=True,
                 print_rate=100)
 
-    # # Evaluate
-    # m = mymodel.evaluate(x_test, y_test, batch_size=batch_size)
+    # Evaluate
+    # m = mymodel.evaluate([x_test], [y_test], batch_size=batch_size)
 
 
 if __name__ == "__main__":

@@ -52,24 +52,24 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        opt=SGD(lr=0.001),
+        opt=SGD(lr=0.1),
         losses=[losses.CrossEntropy()],
         metrics=[metrics.CategoricalAccuracy()],
         debug=False
     )
 
     # Print model
-    # mymodel.summary(batch_size=100)
+    mymodel.summary(batch_size=batch_size)
 
     # Train
-    mymodel.fit(x_train, y_train,
-                x_test=x_test, y_test=y_test,
+    mymodel.fit([x_train], [y_train],
+                x_test=[x_test], y_test=[y_test],
                 batch_size=batch_size, epochs=epochs,
                 evaluate_epoch=True,
                 print_rate=10)
 
     # # Evaluate
-    # m = mymodel.evaluate(x_test, y_test, batch_size=batch_size)
+    # m = mymodel.evaluate([x_test], [y_test], batch_size=batch_size)
 
 
 if __name__ == "__main__":

@@ -15,27 +15,30 @@ class MSE(Metric):
 
     def __init__(self, name="MSE"):
         super().__init__(name=name)
+        self.cls = losses.MSE()
 
     def compute_metric(self, y_pred, y_target):
-        return float(np.mean((y_pred-y_target)**2, axis=1))
+        return self.cls.compute_loss(y_pred, y_target)
 
 
 class RMSE(Metric):
 
     def __init__(self, name="MSE"):
         super().__init__(name=name)
+        self.cls = losses.RMSE()
 
     def compute_metric(self, y_pred, y_target):
-        return float(np.sqrt(np.mean((y_pred-y_target)**2, axis=1)))
+        return self.cls.compute_loss(y_pred, y_target)
 
 
 class MAE(Metric):
 
     def __init__(self, name="MAE"):
         super().__init__(name=name)
+        self.cls = losses.MAE()
 
     def compute_metric(self, y_pred, y_target):
-        return float(np.mean(np.abs(y_pred-y_target), axis=1))
+        return self.cls.compute_loss(y_pred, y_target)
 
 
 class BinaryAccuracy(Metric):

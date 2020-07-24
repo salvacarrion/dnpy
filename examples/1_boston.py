@@ -41,22 +41,22 @@ def main():
         l_out=[l_out],
         opt=SGD(lr=0.01),
         losses=[losses.MSE()],
-        metrics=[metrics.MSE()],
+        metrics=[metrics.MSE(), metrics.MAE()],
         debug=False
     )
 
     # Print model
-    # mymodel.summary(batch_size=100)
+    mymodel.summary(batch_size=batch_size)
 
     # Train
-    mymodel.fit(x_train, y_train,
-                x_test=x_test, y_test=y_test,
+    mymodel.fit([x_train], [y_train],
+                x_test=[x_test], y_test=[y_test],
                 batch_size=batch_size, epochs=epochs,
                 evaluate_epoch=True,
                 print_rate=10)
 
     # # Evaluate
-    # m = mymodel.evaluate(x_test, y_test, batch_size=batch_size)
+    # m = mymodel.evaluate([x_test], [y_test], batch_size=batch_size)
 
 
 if __name__ == "__main__":
