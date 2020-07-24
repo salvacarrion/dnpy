@@ -10,6 +10,7 @@ np.random.seed(1)
 
 
 def main():
+    # Get data
     X = np.array([[0, 0, 1],
                   [0, 1, 1],
                   [1, 0, 1],
@@ -28,7 +29,7 @@ def main():
     epochs = 60000
 
     # Define architecture
-    l_in = Input(shape=(len(X[0]),))
+    l_in = Input(shape=(len(x_train[0]),))
     l = l_in
     l = Dense(l, 4)
     l = Sigmoid(l)
@@ -58,7 +59,7 @@ def main():
                 print_rate=100)
 
     # Evaluate
-    # m = mymodel.evaluate([x_test], [y_test], batch_size=batch_size)
+    m = mymodel.evaluate([x_test], [y_test], batch_size=batch_size)
 
 
 if __name__ == "__main__":

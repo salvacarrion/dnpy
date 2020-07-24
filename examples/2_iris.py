@@ -10,11 +10,12 @@ np.random.seed(42)
 
 
 def main():
+    # Get data
     iris = datasets.load_iris()
     X = iris.data  # we only take the first two features.
     Y = iris.target
 
-    # Preprocessing
+    # Pre-processing
     # Normalize
     X = (X - np.mean(X, axis=0))/np.std(X, axis=0)
 
@@ -37,15 +38,13 @@ def main():
     epochs = 1000
 
     # Define architecture
-    l_in = Input(shape=(len(X[0]),))
-    l = l_in
-    l = Dense(l, 20)
+    l_in = Input(shape=(len(x_train[0]),))
+    l = Dense(l_in, 20)
     l = Relu(l)
     l = Dense(l, 15)
     l = Relu(l)
     l = Dense(l, 3)
-    l = Softmax(l)
-    l_out = l
+    l_out = Softmax(l)
 
     # Build network
     mymodel = Net()
@@ -68,8 +67,8 @@ def main():
                 evaluate_epoch=True,
                 print_rate=10)
 
-    # # Evaluate
-    # m = mymodel.evaluate([x_test], [y_test], batch_size=batch_size)
+    # Evaluate
+    m = mymodel.evaluate([x_test], [y_test], batch_size=batch_size)
 
 
 if __name__ == "__main__":

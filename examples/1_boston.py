@@ -10,10 +10,11 @@ np.random.seed(42)
 
 
 def main():
+    # Get data
     X, Y = datasets.load_boston(return_X_y=True)
     Y = Y.reshape((-1, 1))
 
-    # Preprocessing
+    # Pre-processing
     # Normalize
     X = (X - np.mean(X, axis=0))/np.std(X, axis=0)
 
@@ -25,7 +26,7 @@ def main():
     epochs = 1000
 
     # Define architecture
-    l_in = Input(shape=(len(X[0]),))
+    l_in = Input(shape=(len(x_train[0]),))
     l = l_in
     l = Dense(l, 20)
     l = Relu(l)
