@@ -149,7 +149,7 @@ class Softmax(Layer):
             z = self.parent.output
 
         exps = np.exp(z)
-        sums = np.sum(np.exp(z), axis=0, keepdims=True)
+        sums = np.sum(exps, axis=0, keepdims=True)
         self.output = exps/sums
 
     def backward(self):
