@@ -62,7 +62,8 @@ class Input(Layer):
 
 class Dense(Layer):
 
-    def __init__(self, l_in, units, kernel_initializer=None, bias_initializer=None):
+    def __init__(self, l_in, units, kernel_initializer=None, bias_initializer=None,
+                 kernel_regularizer=None, bias_regularizer=None):
         super().__init__(name="Dense")
         self.parent = l_in
         self.oshape = (units, 1)
@@ -82,6 +83,10 @@ class Dense(Layer):
         if bias_initializer is None:
             self.bias_initializer = initializers.Zeros()
 
+        # Add regularizers
+        self.kernel_regularizer = kernel_regularizer
+        self.bias_regularizer = bias_regularizer
+
     def initialize(self):
         self.kernel_initializer.apply(self.params, ['w1'])
         self.bias_initializer.apply(self.params, ['b1'])
@@ -95,8 +100,17 @@ class Dense(Layer):
 
         # Compute gradients
         m = self.output.shape[-1]
-        self.grads['g_w1'] += np.dot(self.parent.output, self.delta.T)/m
-        self.grads['g_b1'] += np.sum(self.delta, axis=1, keepdims=True)/m
+        g_w1 = np.dot(self.parent.output, self.delta.T)
+        g_b1 = np.sum(self.delta, axis=1, keepdims=True)
+
+        # Add regularizers (if needed)
+        if self.kernel_regularizer:
+            g_w1 += self.kernel_regularizer.backward(self.params['w1'])
+        if self.bias_regularizer:
+            g_b1 += self.bias_regularizer.backward(self.params['b1'])
+
+        self.grads['g_w1'] += g_w1/m
+        self.grads['g_b1'] += g_b1/m
 
 
 class Relu(Layer):

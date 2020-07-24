@@ -3,6 +3,7 @@ from sklearn import datasets
 from dnpy.layers import *
 from dnpy.net import *
 from dnpy.optimizers import *
+from dnpy.regularizers import *
 from dnpy import metrics, losses
 
 # For debugging
@@ -39,7 +40,7 @@ def main():
 
     # Define architecture
     l_in = Input(shape=(len(x_train[0]),))
-    l = Dense(l_in, 20)
+    l = Dense(l_in, 20, kernel_regularizer=L2(lmda=0.01), bias_regularizer=L1(lmda=0.01))
     l = Relu(l)
     l = Dense(l, 15)
     l = Relu(l)
