@@ -174,3 +174,20 @@ class Softmax(Layer):
             jac = np.diagflat(self.output[:, i]) - np.dot(SM, SM.T)
             self.parent.delta[:, i] = np.dot(jac, self.delta[:, i])
 
+
+class Dropout(Layer):
+
+    def __init__(self, l_in, rate=0.5):
+        super().__init__(name="Dropout")
+        self.parent = l_in
+
+        self.oshape = self.parent.oshape
+        self.rate = rate
+        self.gate = None
+
+    def forward(self):
+        self.gate = (np.random.random(self.parent.output.shape) > self.rate).astype(float)
+        self.output = self.parent.output * self.gate
+
+    def backward(self):
+        self.parent.delta = self.delta * self.gate

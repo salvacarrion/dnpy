@@ -43,6 +43,7 @@ def main():
     l = Dense(l_in, 20, kernel_regularizer=L2(lmda=0.01), bias_regularizer=L1(lmda=0.01))
     l = Relu(l)
     l = Dense(l, 15)
+    l = Dropout(l, 0.1)
     l = Relu(l)
     l = Dense(l, 3)
     l_out = Softmax(l)

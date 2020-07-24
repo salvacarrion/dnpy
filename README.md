@@ -10,7 +10,7 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - Relu
     - Sigmoid
     - Softmax
-    - Dropout => Pending...
+    - Dropout
     - BN => Pending...
     - Conv => Pending...
     - MaxPool => Pending...
@@ -100,6 +100,7 @@ epochs = 1000
 l_in = Input(shape=(len(x_train[0]),))
 l = Dense(l_in, 20, kernel_regularizer=L2(lmda=0.01), bias_regularizer=L1(lmda=0.01))
 l = Relu(l)
+l = Dropout(l, 0.1)
 l = Dense(l, 15)
 l = Relu(l)
 l = Dense(l, 3)
