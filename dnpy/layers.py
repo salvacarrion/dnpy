@@ -76,11 +76,11 @@ class Dense(Layer):
 
         # Initialization: param
         if kernel_initializer is None:
-            self.kernel_initializer = initializers.RandomUniform()
+            self.kernel_initializer = initializers.RandomNormal()
 
         # Initialization: bias
         if bias_initializer is None:
-            self.bias_initializer = initializers.Ones()
+            self.bias_initializer = initializers.Zeros()
 
     def initialize(self):
         self.kernel_initializer.apply(self.params, ['w1'])
