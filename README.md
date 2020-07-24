@@ -10,18 +10,26 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - Relu
     - Sigmoid
     - Softmax
+    - Dropout => Pending...
+    - BN => Pending...
+    - Conv => Pending...
+    - MaxPool => Pending...
+    - AvgPool => Pending...
+    - RNN => Pending...
+    - LSTM => Pending...
    
 - **Optimizers:**
     - SGD
     - Momentum
-    
+    - Adam => Pending...
+
 - **Losses:**
     - MSE
     - RMSE
     - MAE
     - CrossEntropy
     - BinaryCrossEntropy
-    - Hinge
+    - Hinge => Review
 
 - **Metrics:**
     - MSE
@@ -35,10 +43,18 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - Random uniform
     - Ones
     - Zeros
+    - GlorotNormal => Pending...
+    - GlorotUniform => Pending...
+    
+- **Regularizers:**
+    - L1
+    - L2
+    - L1L2  
     
 - **Others:**
     - Multi-input
     - Multi-loss support
+    - Gradient checking => Pending...
     
     
 ## Example
@@ -49,6 +65,7 @@ from sklearn import datasets
 from dnpy.layers import *
 from dnpy.net import *
 from dnpy.optimizers import *
+from dnpy.regularizers import *
 from dnpy import metrics, losses
     
 
@@ -81,7 +98,7 @@ epochs = 1000
 
 # Define architecture
 l_in = Input(shape=(len(x_train[0]),))
-l = Dense(l_in, 20)
+l = Dense(l_in, 20, kernel_regularizer=L2(lmda=0.01), bias_regularizer=L1(lmda=0.01))
 l = Relu(l)
 l = Dense(l, 15)
 l = Relu(l)
