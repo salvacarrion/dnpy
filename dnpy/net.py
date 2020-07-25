@@ -120,6 +120,10 @@ class Net:
         num_samples = len(x_train[0])
         num_batches = int(num_samples/batch_size)
 
+        # Set mode
+        self.set_mode("train")
+
+        # Train model
         for i in range(epochs):
             if (i % print_rate) == 0:
                 print(f"Epoch {i+1}/{epochs}...")
@@ -169,12 +173,19 @@ class Net:
         # Check datasets compatibility
         check_datasets(None, None, x_test, y_test)
 
+        # Get basic data
         num_samples = len(x_test[0])
         num_batches = int(num_samples / batch_size)
         assert batch_size <= num_samples
 
+        # Set mode
+        self.set_mode("test")
+
+        # Set vars
         losses = []
         metrics = []
+
+        # Evaluate model
         for b in range(num_batches):
             # Get mini-batch
             x_test_mb, y_test_mb = self.get_minibatch(x_test, y_test, b, batch_size)
@@ -204,6 +215,15 @@ class Net:
         assert losses.ndim == 2
         assert metrics.ndim == 2
         return losses, metrics
+
+    def set_mode(self, mode="train"):
+        for l in self.fts_layers:
+            if mode == "train":
+                l.training = True
+            elif mode == "test":
+                l.training = False
+            else:
+                raise KeyError("Unknown mode")
 
     def initialize(self):
         for l in self.fts_layers:

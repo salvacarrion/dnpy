@@ -5,6 +5,7 @@ from dnpy import initializers
 class Layer:
     def __init__(self, name):
         self.name = name
+        self.training = False
 
         self.input = None
         self.output = None
@@ -186,8 +187,11 @@ class Dropout(Layer):
         self.gate = None
 
     def forward(self):
-        self.gate = (np.random.random(self.parent.output.shape) > self.rate).astype(float)
-        self.output = self.parent.output * self.gate
+        if self.training:
+            self.gate = (np.random.random(self.parent.output.shape) > self.rate).astype(float)
+            self.output = self.parent.output * self.gate
+        else:
+            self.output = self.parent.output
 
     def backward(self):
         self.parent.delta = self.delta * self.gate
