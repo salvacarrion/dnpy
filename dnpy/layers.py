@@ -212,12 +212,7 @@ class BatchNorm(Layer):
                        'beta': np.zeros(self.parent.oshape)}
         self.grads = {'g_gamma': np.zeros_like(self.params["gamma"]),
                       'g_beta': np.zeros_like(self.params["beta"])}
-
-        # Temp
-        self.x_mean = None
-        self.x_var = None
-        self.inv_var = None
-        self.x_norm = None
+        self.cache = {}
 
         # Initialization: gamma
         if gamma_initializer is None:
@@ -232,36 +227,39 @@ class BatchNorm(Layer):
         self.beta_initializer.apply(self.params, ['beta'])
 
     def forward(self):
-        if self.training:
-            x = self.parent.output
+        x = self.parent.output
 
-            # Transform to a standar normal distribution
-            self.x_mean = np.mean(x, axis=-1, keepdims=True)
-            self.x_var = np.var(x, axis=-1, keepdims=True)
-            self.inv_var = np.sqrt(self.x_var + self.epsilon)
-            self.x_norm = (x-self.x_mean)/self.inv_var
+        mu = np.mean(x, axis=-1, keepdims=True)
+        var = np.var(x, axis=-1, keepdims=True)
+        inv_var = np.sqrt(var + self.epsilon)
+        x_norm = (x-mu)/inv_var
 
-            self.output = self.params["gamma"] * self.x_norm + self.params["beta"]
+        self.output = self.params["gamma"] * x_norm + self.params["beta"]
 
-        else:
-            self.output = self.parent.output
+        # Cache vars
+        self.cache['mu'] = mu
+        self.cache['var'] = var
+        self.cache['inv_var'] = inv_var
+        self.cache['x_norm'] = x_norm
 
     def backward(self):
         m = self.output.shape[-1]
+        mu, var = self.cache['mu'], self.cache['var']
+        inv_var, x_norm = self.cache['inv_var'], self.cache['x_norm']
 
-        df_dgamma = self.delta * self.x_mean
-        df_dbeta = self.delta  # * 1.0
-        df_dxnorm = self.delta * self.params["gamma"]
+        dgamma = self.delta * mu
+        dbeta = self.delta  # * 1.0
+        dxnorm = self.delta * self.params["gamma"]
 
-        df_xi = (1.0/m) * self.inv_var * (
-                (m * df_dxnorm)
-                - (np.sum(df_dxnorm, axis=-1, keepdims=True))
-                - (self.x_norm * np.sum(df_dxnorm*self.x_norm, axis=-1, keepdims=True))
+        df_xi = (1.0/m) * inv_var * (
+                (m * dxnorm)
+                - (np.sum(dxnorm, axis=-1, keepdims=True))
+                - (x_norm * np.sum(dxnorm*x_norm, axis=-1, keepdims=True))
         )
 
         self.parent.delta = df_xi
-        self.grads["g_gamma"] += np.sum(df_dgamma, axis=-1, keepdims=True)
-        self.grads["g_beta"] += np.sum(df_dbeta, axis=-1, keepdims=True)
+        self.grads["g_gamma"] += np.sum(dgamma, axis=-1, keepdims=True)
+        self.grads["g_beta"] += np.sum(dbeta, axis=-1, keepdims=True)
 
 
 
