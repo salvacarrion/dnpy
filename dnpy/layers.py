@@ -163,21 +163,21 @@ class Softmax(Layer):
 
     def forward(self):
         if self.stable:
-            z = self.parent.output - np.max(self.parent.output, axis=0, keepdims=True)
+            z = self.parent.output - np.max(self.parent.output, axis=1, keepdims=True)
         else:
             z = self.parent.output
 
         exps = np.exp(z)
-        sums = np.sum(exps, axis=0, keepdims=True)
+        sums = np.sum(exps, axis=1, keepdims=True)
         self.output = exps/sums
 
     def backward(self):
         self.parent.delta = np.zeros_like(self.output)
-        m = self.output.shape[-1]
+        m = self.output.shape[0]
         for i in range(m):
-            SM = self.output[:, i].reshape((-1, 1))
-            jac = np.diagflat(self.output[:, i]) - np.dot(SM, SM.T)
-            self.parent.delta[:, i] = np.dot(jac, self.delta[:, i])
+            SM = self.output[i, :].reshape((-1, 1))
+            jac = np.diagflat(self.output[i, :]) - np.dot(SM, SM.T)
+            self.parent.delta[i, :] = np.dot(jac, self.delta[i, :])
 
 
 class Dropout(Layer):
@@ -212,8 +212,8 @@ class BatchNorm(Layer):
         # Params and grads
         self.params = {'gamma': np.ones(self.parent.oshape),
                        'beta': np.zeros(self.parent.oshape)}
-        self.params_fixed = {'moving_mu': None,
-                             'moving_var': None}
+        self.params_fixed = {'moving_mu': np.zeros(self.parent.oshape),
+                             'moving_var': np.ones(self.parent.oshape)}
         self.grads = {'g_gamma': np.zeros_like(self.params["gamma"]),
                       'g_beta': np.zeros_like(self.params["beta"])}
         self.cache = {}
@@ -241,19 +241,11 @@ class BatchNorm(Layer):
             var = np.var(x, axis=0, keepdims=True)
 
             # Check if it's the first forward
-            if self.params_fixed.get('moving_mu') is None or self.params_fixed.get('moving_var') is None:
-                self.params_fixed['moving_mu'] = mu
-                self.params_fixed['moving_var'] = var
-            else:
-                self.params_fixed['moving_mu'] = self.momentum * self.params_fixed['moving_mu'] + (1.0-self.momentum)*mu
-                self.params_fixed['moving_var'] = self.momentum * self.params_fixed['moving_var'] + (1.0-self.momentum)*var
+            self.params_fixed['moving_mu'] = self.momentum * self.params_fixed['moving_mu'] + (1.0-self.momentum)*mu
+            self.params_fixed['moving_var'] = self.momentum * self.params_fixed['moving_var'] + (1.0-self.momentum)*var
         else:
-            # For a dummy forward
-            if self.params_fixed.get('moving_mu') is None or self.params_fixed.get('moving_var') is None:
-                var = mu = np.zeros(self.parent.oshape)
-            else:
-                mu = self.params_fixed['moving_mu']
-                var = self.params_fixed['moving_var']
+            mu = self.params_fixed['moving_mu']
+            var = self.params_fixed['moving_var']
 
         inv_var = np.sqrt(var + self.epsilon)
         x_norm = (x-mu)/inv_var
