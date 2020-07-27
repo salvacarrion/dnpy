@@ -97,11 +97,11 @@ class Hinge(Loss):
         super().__init__(name=name)
 
     def compute_loss(self, y_pred, y_target):
-        loss = np.maximum(0, (1-y_pred) * y_target)
+        loss = np.maximum(0, (1-y_target*y_pred))
         loss = float(np.mean(loss, axis=0, keepdims=True))
         return loss
 
     def compute_delta(self, y_pred, y_target):
-        tmp = (y_pred >= 0).astype(float)
-        d_loss = tmp * -1.0 * y_target
+        gate = np.invert(((y_target*y_pred) > 1)).astype(float)  # max(0, 1 - x)  ) => x+1<1
+        d_loss = gate * (-1.0 * y_target)
         return d_loss

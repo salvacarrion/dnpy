@@ -43,13 +43,14 @@ class MAE(Metric):
 
 class BinaryAccuracy(Metric):
 
-    def __init__(self, name="BinaryAccuracy"):
+    def __init__(self, threshold=0.5, name="BinaryAccuracy"):
         super().__init__(name=name)
+        self.threshold = threshold
 
     def compute_metric(self, y_pred, y_target):
         # Get classes
-        y_target_class = y_target.astype(bool)
-        y_pred_class = (y_pred > 0.5).astype(bool)
+        y_target_class = (y_target > self.threshold).astype(bool)
+        y_pred_class = (y_pred > self.threshold).astype(bool)
 
         # Check class correctness
         is_correct = y_target_class == y_pred_class

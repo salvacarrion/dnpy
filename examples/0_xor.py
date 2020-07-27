@@ -16,10 +16,10 @@ def main():
                   [1, 0, 1],
                   [1, 1, 1]])
 
-    Y = np.array([[0],
+    Y = np.array([[-1],
                   [1],
                   [1],
-                  [0]])
+                  [-1]])
 
     x_train, y_train = X, Y
     x_test, y_test = X, Y
@@ -32,9 +32,8 @@ def main():
     l_in = Input(shape=(len(x_train[0]),))
     l = l_in
     l = Dense(l, 4)
-    l = Sigmoid(l)
+    l = Tanh(l)
     l = Dense(l, 1)
-    l = Sigmoid(l)
     l_out = l
 
     # Build network
@@ -43,8 +42,8 @@ def main():
         l_in=[l_in],
         l_out=[l_out],
         opt=SGD(lr=1.0),
-        losses=[losses.BinaryCrossEntropy()],
-        metrics=[metrics.BinaryAccuracy(), metrics.MAE()],
+        losses=[losses.Hinge()],
+        metrics=[metrics.BinaryAccuracy(threshold=0.0), metrics.MAE()],
         debug=False
     )
 

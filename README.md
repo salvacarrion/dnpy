@@ -9,6 +9,7 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - Dense
     - Relu
     - Sigmoid
+    - Tanh
     - Softmax
     - Dropout
     - Add => Pending...
@@ -32,7 +33,7 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - MAE
     - CrossEntropy
     - BinaryCrossEntropy
-    - Hinge => Review
+    - Hinge
 
 - **Metrics:**
     - MSE
@@ -61,7 +62,6 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - Multi-loss support
     - Set modes
     - Gradient checking => Pending...
-    - Batch first => Pending...
     - EarlyStopping => Pending...
     - Load/Save model => Pending...
     - Freeze layer => Pending...
