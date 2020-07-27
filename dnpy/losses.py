@@ -97,11 +97,15 @@ class Hinge(Loss):
         super().__init__(name=name)
 
     def compute_loss(self, y_pred, y_target):
+        # We cannot use a probability layer previous to this loss,
+        # because the margin here is 1. Hence, maximum value is
+        # always less than 1 (margin) => +1*0.999 < 1  [Derivative never changes]
         loss = np.maximum(0, (1-y_target*y_pred))
         loss = float(np.mean(loss, axis=0, keepdims=True))
         return loss
 
     def compute_delta(self, y_pred, y_target):
-        gate = np.invert(((y_target*y_pred) > 1)).astype(float)  # max(0, 1 - x)  ) => x+1<1
+        gate = ((y_target*y_pred) > 1)
+        gate = np.invert(gate).astype(float)  # Complement trick
         d_loss = gate * (-1.0 * y_target)
         return d_loss
