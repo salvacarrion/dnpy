@@ -148,8 +148,24 @@ class Sigmoid(Layer):
         self.output = 1.0 / (1.0 + np.exp(-self.parent.output))
 
     def backward(self):
-        # Each layer sets the delta of their parent (m,13)=>(m, 10)=>(m, 1)=>(1,1)
         self.parent.delta = self.delta * (self.output * (1 - self.output))
+
+
+class Tanh(Layer):
+
+    def __init__(self, l_in):
+        super().__init__(name="Tanh")
+        self.parent = l_in
+
+        self.oshape = self.parent.oshape
+
+    def forward(self):
+        a = np.exp(self.parent.output)
+        b = np.exp(-self.parent.output)
+        self.output = (a - b) / (a + b)
+
+    def backward(self):
+        self.parent.delta = self.delta * (1 - self.output**2)
 
 
 class Softmax(Layer):
