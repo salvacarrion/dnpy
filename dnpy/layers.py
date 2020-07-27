@@ -80,7 +80,8 @@ class Dense(Layer):
 
         # Initialization: param
         if kernel_initializer is None:
-            self.kernel_initializer = initializers.RandomNormal()
+            fan_in, fan_out = self.params['w1'].shape
+            self.kernel_initializer = initializers.HeNormal(fan_in=fan_in, fan_out=fan_out)
 
         # Initialization: bias
         if bias_initializer is None:

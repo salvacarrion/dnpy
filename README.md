@@ -23,6 +23,7 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
 - **Optimizers:**
     - SGD
     - Momentum
+    - RMSprop
     - Adam => Pending...
 
 - **Losses:**
@@ -41,23 +42,29 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - BinaryAccuracy
     
 - **Initializers:**
-    - Random normal
-    - Random uniform
+    - Constant
     - Ones
     - Zeros
-    - GlorotNormal => Pending...
-    - GlorotUniform => Pending...
+    - RandomNormal
+    - RandomUniform
+    - GlorotNormal
+    - GlorotUniform
+    - HeNormal
     
 - **Regularizers:**
     - L1
     - L2
     - L1L2  
     
-- **Others:**
+- **Miscellaneous:**
     - Multi-input
     - Multi-loss support
-    - Gradient checking => Pending...
     - Set modes
+    - Gradient checking => Pending...
+    - Batch first => Pending...
+    - EarlyStopping => Pending...
+    - Load/Save model => Pending...
+    - Freeze layer => Pending...
     
     
 ## Example
