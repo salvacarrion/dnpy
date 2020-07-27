@@ -258,14 +258,18 @@ class BatchNorm(Layer):
             mu = np.mean(x, axis=0, keepdims=True)
             var = np.var(x, axis=0, keepdims=True)
 
-            # Compute exponentially weighted average (aka moving average)
+            # Get moving average/variance
             self.fw_steps += 1
-            if self.fw_steps > 1:
-                moving_mu = self.momentum * self.params_fixed['moving_mu'] + (1.0 - self.momentum) * mu
-                moving_var = self.momentum * self.params_fixed['moving_var'] + (1.0-self.momentum) * var
-            else:
+            # Add the bias_correction part to use the implicit correction
+            if self.bias_correction and self.fw_steps == 1:
                 moving_mu = mu
                 moving_var = var
+            else:
+                # Compute exponentially weighted average (aka moving average)
+                # No bias correction => Use the implicit "correction" of starting with mu=zero and var=one
+                # Bias correction => Simply apply weighted average
+                moving_mu = self.momentum * self.params_fixed['moving_mu'] + (1.0 - self.momentum) * mu
+                moving_var = self.momentum * self.params_fixed['moving_var'] + (1.0 - self.momentum) * var
 
             # Compute bias correction
             if self.bias_correction and self.fw_steps <= 1000:  # Limit set to prevent overflow
