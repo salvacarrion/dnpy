@@ -23,7 +23,7 @@ class MSE(Metric):
 
 class RMSE(Metric):
 
-    def __init__(self, name="MSE"):
+    def __init__(self, name="RMSE"):
         super().__init__(name=name)
         self.cls = losses.RMSE()
 
@@ -55,7 +55,7 @@ class BinaryAccuracy(Metric):
         is_correct = y_target_class == y_pred_class
 
         # Compute accuracy
-        acc = float(np.mean(is_correct, axis=1))
+        acc = float(np.mean(is_correct, axis=0))
         return acc
 
 
@@ -68,8 +68,8 @@ class CategoricalAccuracy(Metric):
         y_pred, y_target = y_pred.T, y_target.T
 
         # Get maximum values (aka. predicted class)
-        y_target_best_class = np.argmax(y_target, axis=1)
-        y_pred_best_class = np.argmax(y_pred, axis=1)
+        y_target_best_class = np.argmax(y_target, axis=0)
+        y_pred_best_class = np.argmax(y_pred, axis=0)
 
         # Check class correctness
         is_correct = y_target_best_class == y_pred_best_class

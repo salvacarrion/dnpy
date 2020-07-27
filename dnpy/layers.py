@@ -18,6 +18,7 @@ class Layer:
         self.oshape = None
 
         self.epsilon = 10e-8
+        self.stats = {'forward': 0, 'backward': 0}
 
     def initialize(self):
         pass
@@ -69,12 +70,12 @@ class Dense(Layer):
                  kernel_regularizer=None, bias_regularizer=None):
         super().__init__(name="Dense")
         self.parent = l_in
-        self.oshape = (units, 1)
+        self.oshape = (units,)
         self.units = units
 
         # Params and grads
         self.params = {'w1': np.zeros((self.parent.oshape[0], self.units)),
-                       'b1': np.zeros((self.units, 1))}
+                       'b1': np.zeros((1, self.units))}
         self.grads = {'g_w1': np.zeros_like(self.params['w1']),
                       'g_b1': np.zeros_like(self.params['b1'])}
 
@@ -96,16 +97,16 @@ class Dense(Layer):
         self.bias_initializer.apply(self.params, ['b1'])
 
     def forward(self):
-        self.output = np.dot(self.params['w1'].T, self.parent.output) + self.params['b1']
+        self.output = np.dot(self.parent.output, self.params['w1']) + self.params['b1']
 
     def backward(self):
-        # Each layer sets the delta of their parent (13,m)=>(10,m)=>(1,m)=>(1,1)
-        self.parent.delta = np.dot(self.params['w1'], self.delta)
+        # Each layer sets the delta of their parent (m,13)=>(m, 10)=>(m, 1)=>(1,1)
+        self.parent.delta = np.dot(self.delta, self.params['w1'].T)
 
         # Compute gradients
-        m = self.output.shape[-1]
-        g_w1 = np.dot(self.parent.output, self.delta.T)
-        g_b1 = np.sum(self.delta, axis=1, keepdims=True)
+        m = self.output.shape[0]
+        g_w1 = np.dot(self.parent.output.T, self.delta)
+        g_b1 = np.sum(self.delta, axis=0, keepdims=True)
 
         # Add regularizers (if needed)
         if self.kernel_regularizer:
@@ -131,7 +132,7 @@ class Relu(Layer):
         self.output = self.gate * self.parent.output
 
     def backward(self):
-        # Each layer sets the delta of their parent (13,m)=>(10,m)=>(1,m)=>(1,1)
+        # Each layer sets the delta of their parent (m,13)=>(m, 10)=>(m, 1)=>(1,1)
         self.parent.delta = self.gate * self.delta
 
 
@@ -147,7 +148,7 @@ class Sigmoid(Layer):
         self.output = 1.0 / (1.0 + np.exp(-self.parent.output))
 
     def backward(self):
-        # Each layer sets the delta of their parent (13,m)=>(10,m)=>(1,m)=>(1,1)
+        # Each layer sets the delta of their parent (m,13)=>(m, 10)=>(m, 1)=>(1,1)
         self.parent.delta = self.delta * (self.output * (1 - self.output))
 
 
@@ -202,18 +203,23 @@ class Dropout(Layer):
 
 class BatchNorm(Layer):
 
-    def __init__(self, l_in, gamma_initializer=None, beta_initializer=None):
+    def __init__(self, l_in, momentum=0.99, gamma_initializer=None, beta_initializer=None):
         super().__init__(name="BatchNorm")
         self.parent = l_in
 
         self.oshape = self.parent.oshape
 
         # Params and grads
-        self.params = {'gamma': np.zeros(self.parent.oshape),
+        self.params = {'gamma': np.ones(self.parent.oshape),
                        'beta': np.zeros(self.parent.oshape)}
+        self.params_fixed = {'moving_mu': None,
+                             'moving_var': None}
         self.grads = {'g_gamma': np.zeros_like(self.params["gamma"]),
                       'g_beta': np.zeros_like(self.params["beta"])}
         self.cache = {}
+
+        # Constants
+        self.momentum = momentum
 
         # Initialization: gamma
         if gamma_initializer is None:
@@ -230,8 +236,25 @@ class BatchNorm(Layer):
     def forward(self):
         x = self.parent.output
 
-        mu = np.mean(x, axis=-1, keepdims=True)
-        var = np.var(x, axis=-1, keepdims=True)
+        if self.training:
+            mu = np.mean(x, axis=0, keepdims=True)
+            var = np.var(x, axis=0, keepdims=True)
+
+            # Check if it's the first forward
+            if self.params_fixed.get('moving_mu') is None or self.params_fixed.get('moving_var') is None:
+                self.params_fixed['moving_mu'] = mu
+                self.params_fixed['moving_var'] = var
+            else:
+                self.params_fixed['moving_mu'] = self.momentum * self.params_fixed['moving_mu'] + (1.0-self.momentum)*mu
+                self.params_fixed['moving_var'] = self.momentum * self.params_fixed['moving_var'] + (1.0-self.momentum)*var
+        else:
+            # For a dummy forward
+            if self.params_fixed.get('moving_mu') is None or self.params_fixed.get('moving_var') is None:
+                var = mu = np.zeros(self.parent.oshape)
+            else:
+                mu = self.params_fixed['moving_mu']
+                var = self.params_fixed['moving_var']
+
         inv_var = np.sqrt(var + self.epsilon)
         x_norm = (x-mu)/inv_var
 
@@ -244,7 +267,7 @@ class BatchNorm(Layer):
         self.cache['x_norm'] = x_norm
 
     def backward(self):
-        m = self.output.shape[-1]
+        m = self.output.shape[0]
         mu, var = self.cache['mu'], self.cache['var']
         inv_var, x_norm = self.cache['inv_var'], self.cache['x_norm']
 
@@ -254,13 +277,13 @@ class BatchNorm(Layer):
 
         df_xi = (1.0/m) * inv_var * (
                 (m * dxnorm)
-                - (np.sum(dxnorm, axis=-1, keepdims=True))
-                - (x_norm * np.sum(dxnorm*x_norm, axis=-1, keepdims=True))
+                - (np.sum(dxnorm, axis=0, keepdims=True))
+                - (x_norm * np.sum(dxnorm*x_norm, axis=0, keepdims=True))
         )
 
         self.parent.delta = df_xi
-        self.grads["g_gamma"] += np.sum(dgamma, axis=-1, keepdims=True)
-        self.grads["g_beta"] += np.sum(dbeta, axis=-1, keepdims=True)
+        self.grads["g_gamma"] += np.sum(dgamma, axis=0)
+        self.grads["g_beta"] += np.sum(dbeta, axis=0)
 
 
 

@@ -40,6 +40,7 @@ class Net:
         self.losses = None
         self.metrics = None
         self.debug = False
+        self.mode = 'test'
 
     def build(self, l_in, l_out, opt, losses, metrics, debug=False):
         self.l_in = l_in
@@ -88,8 +89,8 @@ class Net:
         # Select mini-batches
         for j in range(len(self.l_in)):
             idx = batch_i * batch_size
-            x_train_mb += [x_train[j][idx:idx + batch_size].T]
-            y_train_mb += [y_train[j][idx:idx + batch_size].T]
+            x_train_mb += [x_train[j][idx:idx + batch_size]]
+            y_train_mb += [y_train[j][idx:idx + batch_size]]
 
         return x_train_mb, y_train_mb
 
@@ -120,14 +121,16 @@ class Net:
         num_samples = len(x_train[0])
         num_batches = int(num_samples/batch_size)
 
-        # Set mode
-        self.set_mode("train")
-
         # Train model
         for i in range(epochs):
             if (i % print_rate) == 0:
                 print(f"Epoch {i+1}/{epochs}...")
 
+            # Set mode
+            if self.mode != "train":
+                self.set_mode('train')
+
+            # Train mini-batches
             for b in range(num_batches):
                 # Get minibatch
                 x_train_mb, y_train_mb = self.get_minibatch(x_train, y_train, b, batch_size)
@@ -152,6 +155,9 @@ class Net:
                 self.apply_grads()
 
             if evaluate_epoch and (i % print_rate) == 0:
+                # Set mode
+                self.set_mode('test')
+
                 # Evaluate train
                 lo, me = self.evaluate(x_train, y_train, batch_size=1)
                 str_eval = self._format_eval(lo, me)
@@ -179,7 +185,9 @@ class Net:
         assert batch_size <= num_samples
 
         # Set mode
-        self.set_mode("test")
+        if self.mode != "test":
+            print("[WARNING] Setting net mode to 'test'")
+            self.set_mode('test')
 
         # Set vars
         losses = []
@@ -214,13 +222,15 @@ class Net:
         metrics = np.mean(metrics, axis=0)
         assert losses.ndim == 2
         assert metrics.ndim == 2
+
         return losses, metrics
 
     def set_mode(self, mode="train"):
+        self.mode = mode
         for l in self.fts_layers:
-            if mode == "train":
+            if self.mode == "train":
                 l.training = True
-            elif mode == "test":
+            elif self.mode == "test":
                 l.training = False
             else:
                 raise KeyError("Unknown mode")
@@ -299,14 +309,21 @@ class Net:
         print("Model summary")
         print('==================================')
 
+        # Set mode
+        previous_mode = self.mode
+        self.set_mode('test')
+
         # Feed random input to input layers
         for i in range(len(self.l_in)):
-            x = np.random.random([*self.l_in[i].oshape, batch_size])
+            x = np.random.random([batch_size, *self.l_in[i].oshape])
             self.l_in[i].input = x
 
         # Forward
         self.forward()
 
         for i, l in enumerate(self.fts_layers):
-            p_oshape = l.output.shape if l.parent else l.input.shape
+            p_oshape = l.parent.output.shape if l.parent else l.input.shape
             print(f"#{i+1}:\t{l.name}\t\t-\t{p_oshape}\t=>\t{l.output.shape}")
+
+        # Set previous mode
+        self.set_mode(previous_mode)

@@ -35,7 +35,7 @@ def main():
     x_test, y_test = X, Y
 
     # Params *********************************
-    batch_size = len(x_train)
+    batch_size = int(len(x_train)/5)
     epochs = 1000
 
     # Define architecture

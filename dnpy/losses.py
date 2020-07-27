@@ -20,7 +20,7 @@ class MSE(Loss):
         super().__init__(name=name)
 
     def compute_loss(self, y_pred, y_target):
-        return float(np.mean((y_pred-y_target)**2, axis=1, keepdims=True))
+        return float(np.mean((y_pred-y_target)**2, axis=0, keepdims=True))
 
     def compute_delta(self, y_pred, y_target):
         return 2 * (y_pred-y_target)
@@ -33,7 +33,7 @@ class RMSE(Loss):
 
     def compute_loss(self, y_pred, y_target):
         mse = (y_pred-y_target)**2
-        loss = float(np.sqrt(np.mean(mse, axis=1, keepdims=True)))
+        loss = float(np.sqrt(np.mean(mse, axis=0, keepdims=True)))
         return loss
 
     def compute_delta(self, y_pred, y_target):
@@ -49,7 +49,7 @@ class MAE(Loss):
 
     def compute_loss(self, y_pred, y_target):
         loss = np.abs(y_pred-y_target)
-        loss = float(np.mean(loss, axis=1, keepdims=True))
+        loss = float(np.mean(loss, axis=0, keepdims=True))
         return loss
 
     def compute_delta(self, y_pred, y_target):
@@ -64,7 +64,7 @@ class BinaryCrossEntropy(Loss):
 
     def compute_loss(self, y_pred, y_target):
         loss = y_target * np.log(y_pred+self.epsilon) + (1.0-y_target) * np.log(1.0-y_pred+self.epsilon)
-        loss = -1.0 * float(np.mean(loss, axis=1, keepdims=True))
+        loss = -1.0 * float(np.mean(loss, axis=0, keepdims=True))
         return loss
 
     def compute_delta(self, y_pred, y_target):
@@ -80,8 +80,8 @@ class CrossEntropy(Loss):
 
     def compute_loss(self, y_pred, y_target):
         # Compute loss: -SUM(p(x) * log q(x_))
-        loss = np.sum(y_target.astype(float) * np.log(y_pred), axis=0, keepdims=True)
-        loss = -1.0 * float(np.mean(loss, axis=1, keepdims=True))
+        loss = np.sum(y_target.astype(float) * np.log(y_pred+self.epsilon), axis=1, keepdims=True)
+        loss = -1.0 * float(np.mean(loss, axis=0, keepdims=True))
         return loss
 
     def compute_delta(self, y_pred, y_target):
@@ -98,7 +98,7 @@ class Hinge(Loss):
 
     def compute_loss(self, y_pred, y_target):
         loss = np.maximum(0, (1-y_pred) * y_target)
-        loss = float(np.mean(loss, axis=1, keepdims=True))
+        loss = float(np.mean(loss, axis=0, keepdims=True))
         return loss
 
     def compute_delta(self, y_pred, y_target):
