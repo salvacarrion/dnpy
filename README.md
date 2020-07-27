@@ -23,8 +23,8 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
    
 - **Optimizers:**
     - SGD
-    - Momentum
-    - RMSprop
+    - Momentum 
+    - RMSprop => Pending...
     - Adam => Pending...
 
 - **Losses:**

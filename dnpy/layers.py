@@ -219,7 +219,7 @@ class Dropout(Layer):
 
 class BatchNorm(Layer):
 
-    def __init__(self, l_in, momentum=0.99, gamma_initializer=None, beta_initializer=None):
+    def __init__(self, l_in, momentum=0.99, bias_correction=False, gamma_initializer=None, beta_initializer=None):
         super().__init__(name="BatchNorm")
         self.parent = l_in
 
@@ -233,9 +233,11 @@ class BatchNorm(Layer):
         self.grads = {'g_gamma': np.zeros_like(self.params["gamma"]),
                       'g_beta': np.zeros_like(self.params["beta"])}
         self.cache = {}
+        self.fw_steps = 0
 
         # Constants
         self.momentum = momentum
+        self.bias_correction = bias_correction
 
         # Initialization: gamma
         if gamma_initializer is None:
@@ -256,9 +258,24 @@ class BatchNorm(Layer):
             mu = np.mean(x, axis=0, keepdims=True)
             var = np.var(x, axis=0, keepdims=True)
 
-            # Check if it's the first forward
-            self.params_fixed['moving_mu'] = self.momentum * self.params_fixed['moving_mu'] + (1.0-self.momentum)*mu
-            self.params_fixed['moving_var'] = self.momentum * self.params_fixed['moving_var'] + (1.0-self.momentum)*var
+            # Compute exponentially weighted average (aka moving average)
+            self.fw_steps += 1
+            if self.fw_steps > 1:
+                moving_mu = self.momentum * self.params_fixed['moving_mu'] + (1.0 - self.momentum) * mu
+                moving_var = self.momentum * self.params_fixed['moving_var'] + (1.0-self.momentum) * var
+            else:
+                moving_mu = mu
+                moving_var = var
+
+            # Compute bias correction
+            if self.bias_correction and self.fw_steps <= 1000:  # Limit set to prevent overflow
+                bias_correction = 1.0/(1-self.momentum**self.fw_steps)
+                moving_mu *= bias_correction
+                moving_var *= bias_correction
+
+            # Save moving averages
+            self.params_fixed['moving_mu'] = moving_mu
+            self.params_fixed['moving_var'] = moving_var
         else:
             mu = self.params_fixed['moving_mu']
             var = self.params_fixed['moving_var']
