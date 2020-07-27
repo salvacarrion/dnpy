@@ -18,7 +18,7 @@ class Layer:
         self.oshape = None
 
         self.epsilon = 10e-8
-        self.stats = {'forward': 0, 'backward': 0}
+        self.frozen = False
 
     def initialize(self):
         pass

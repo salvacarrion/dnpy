@@ -29,6 +29,7 @@ def check_datasets(x_train, y_train, x_test, y_test):
         for x_i, y_i in zip(x_test, y_test):
             assert x_i.shape[0] == y_i.shape[0]  # num. samples
 
+
 class Net:
 
     def __init__(self):
@@ -268,7 +269,9 @@ class Net:
 
     def apply_grads(self):
         for l in self.bts_layers:
-            self.opt.apply(l.params, l.grads)
+            # Check if the layer is frozen
+            if not l.frozen:
+                self.opt.apply(l.params, l.grads)
 
     def compute_losses(self, y_target):
         losses = []
