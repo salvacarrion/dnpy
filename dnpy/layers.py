@@ -327,10 +327,25 @@ class BatchNorm(Layer):
         self.grads["beta"] += np.sum(dbeta, axis=0)
 
 
+class Reshape(Layer):
 
+    def __init__(self, l_in, shape):
+        super().__init__(name="Reshape")
+        self.parent = l_in
 
+        # Check layer compatibility
+        if np.prod(self.parent.oshape) != np.prod(shape):
+            raise ValueError(f"Not compatible shapes ({self.name})")
 
+        self.oshape = shape
 
+    def forward(self):
+        new_shape = (-1, *self.oshape)  # Due to batch
+        self.output = np.reshape(self.parent.output, newshape=new_shape)
+
+    def backward(self):
+        new_shape = (-1, *self.parent.oshape)  # Due to batch
+        self.parent.delta = np.reshape(self.delta, newshape=new_shape)
 
 
 
