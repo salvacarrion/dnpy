@@ -24,7 +24,7 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
 - **Optimizers:**
     - SGD
         - Momentum
-        - Nesterov
+        - Nesterov => Review
         - Bias correction
     - RMSprop
     - Adam

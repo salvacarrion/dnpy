@@ -18,8 +18,16 @@ def main():
     # Normalize
     X = (X - np.mean(X, axis=0))/np.std(X, axis=0)
 
-    x_train, y_train = X, Y
-    x_test, y_test = X, Y
+    # Shuffle dataset
+    idxs = np.arange(len(X))
+    np.random.shuffle(idxs)
+    X, Y = X[idxs], Y[idxs]
+
+    # Select train/test
+    c = 0.8
+    tr_size = int(len(X) * c)
+    x_train, y_train = X[:tr_size], Y[:tr_size]
+    x_test, y_test = X[tr_size:], Y[tr_size:]
 
     # Params *********************************
     batch_size = len(x_train)

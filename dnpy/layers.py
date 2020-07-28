@@ -81,8 +81,8 @@ class Dense(Layer):
         # Params and grads
         self.params = {'w1': np.zeros((self.parent.oshape[0], self.units)),
                        'b1': np.zeros((1, self.units))}
-        self.grads = {'g_w1': np.zeros_like(self.params['w1']),
-                      'g_b1': np.zeros_like(self.params['b1'])}
+        self.grads = {'w1': np.zeros_like(self.params['w1']),
+                      'b1': np.zeros_like(self.params['b1'])}
 
         # Initialization: param
         if kernel_initializer is None:
@@ -122,8 +122,8 @@ class Dense(Layer):
         if self.bias_regularizer:
             g_b1 += self.bias_regularizer.backward(self.params['b1'])
 
-        self.grads['g_w1'] += g_w1/m
-        self.grads['g_b1'] += g_b1/m
+        self.grads['w1'] += g_w1/m
+        self.grads['b1'] += g_b1/m
 
 
 class Relu(Layer):
@@ -238,8 +238,8 @@ class BatchNorm(Layer):
                        'beta': np.zeros(self.parent.oshape)}
         self.params_fixed = {'moving_mu': np.zeros(self.parent.oshape),
                              'moving_var': np.ones(self.parent.oshape)}
-        self.grads = {'g_gamma': np.zeros_like(self.params["gamma"]),
-                      'g_beta': np.zeros_like(self.params["beta"])}
+        self.grads = {'gamma': np.zeros_like(self.params["gamma"]),
+                      'beta': np.zeros_like(self.params["beta"])}
         self.cache = {}
         self.fw_steps = 0
 
@@ -323,8 +323,8 @@ class BatchNorm(Layer):
         )
 
         self.parent.delta = df_xi
-        self.grads["g_gamma"] += np.sum(dgamma, axis=0)
-        self.grads["g_beta"] += np.sum(dbeta, axis=0)
+        self.grads["gamma"] += np.sum(dgamma, axis=0)
+        self.grads["beta"] += np.sum(dbeta, axis=0)
 
 
 

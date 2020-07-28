@@ -33,7 +33,7 @@ class SGD(Optimizer):
 
             # Momentum
             v_prev = self.V[k]
-            self.V[k] = self.momentum * self.V[k] + (1 - self.momentum) * grads["g_" + k]
+            self.V[k] = self.momentum * self.V[k] + (1 - self.momentum) * grads[k]
 
             # Bias correction. It is not common to use it here
             # Note: Vanilla SGD does not need bias correction
@@ -70,10 +70,10 @@ class RMSProp(Optimizer):
     def apply(self, params, grads, step_i=None):
         for k in params.keys():
             # Momentum
-            self.S[k] = self.rho * self.S[k] + (1.0 - self.rho) * grads["g_" + k]**2
+            self.S[k] = self.rho * self.S[k] + (1.0 - self.rho) * grads[k]**2
 
             # Step
-            new_v = grads["g_" + k]/(np.sqrt(self.S[k]+self.epsilon))
+            new_v = grads[k]/(np.sqrt(self.S[k]+self.epsilon))
             params[k] -= self.lr * new_v
 
 
@@ -99,8 +99,8 @@ class Adam(Optimizer):
     def apply(self, params, grads, step_i=None):
         for k in params.keys():
             # Momentum
-            self.V[k] = self.beta_1 * self.V[k] + (1.0 - self.beta_1) * grads["g_" + k]
-            self.S[k] = self.beta_2 * self.S[k] + (1.0 - self.beta_2) * grads["g_" + k] ** 2
+            self.V[k] = self.beta_1 * self.V[k] + (1.0 - self.beta_1) * grads[k]
+            self.S[k] = self.beta_2 * self.S[k] + (1.0 - self.beta_2) * grads[k] ** 2
 
             # Bias correction
             if self.bias_correction:

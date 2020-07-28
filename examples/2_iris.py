@@ -31,8 +31,11 @@ def main():
     np.random.shuffle(idxs)
     X, Y = X[idxs], Y[idxs]
 
-    x_train, y_train = X, Y
-    x_test, y_test = X, Y
+    # Select train/test
+    c = 0.8
+    tr_size = int(len(X) * c)
+    x_train, y_train = X[:tr_size], Y[:tr_size]
+    x_test, y_test = X[tr_size:], Y[tr_size:]
 
     # Params *********************************
     batch_size = int(len(x_train)/5)
