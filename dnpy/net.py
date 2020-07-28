@@ -37,18 +37,18 @@ class Net:
         self.l_out = None
         self.fts_layers = None
         self.bts_layers = None
-        self.opt = None
+        self.optimizer = None
         self.losses = None
         self.metrics = None
         self.debug = False
         self.mode = 'test'
 
-    def build(self, l_in, l_out, opt, losses, metrics, debug=False):
+    def build(self, l_in, l_out, optimizer, losses, metrics, debug=False):
         self.l_in = l_in
         self.l_out = l_out
         self.fts_layers = []
         self.bts_layers = []
-        self.opt = opt
+        self.optimizer = optimizer
         self.losses = losses
         self.metrics = metrics
         self.debug = debug
@@ -239,7 +239,7 @@ class Net:
     def initialize(self):
         for l in self.fts_layers:
             l.debug = self.debug
-            l.initialize()
+            l.initialize(optimizer=self.optimizer)
 
     def do_delta(self, losses):
         for i in range(len(self.l_out)):
@@ -271,7 +271,7 @@ class Net:
         for l in self.bts_layers:
             # Check if the layer is frozen
             if not l.frozen:
-                self.opt.apply(l.params, l.grads)
+                l.optimizer.apply(l.params, l.grads)
 
     def compute_losses(self, y_target):
         losses = []

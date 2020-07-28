@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 from dnpy import initializers
 
@@ -19,9 +20,13 @@ class Layer:
 
         self.epsilon = 10e-8
         self.frozen = False
+        self.optimizer = None
 
-    def initialize(self):
-        pass
+    def initialize(self, optimizer=None):
+        # Each optimizer must be independent (internal params per layer)
+        if optimizer:
+            self.optimizer = copy.deepcopy(optimizer)
+            self.optimizer.initialize(self.params)
 
     def forward(self):
         pass
@@ -92,7 +97,10 @@ class Dense(Layer):
         self.kernel_regularizer = kernel_regularizer
         self.bias_regularizer = bias_regularizer
 
-    def initialize(self):
+    def initialize(self, optimizer=None):
+        super().initialize(optimizer=optimizer)
+
+        # Initialize params
         self.kernel_initializer.apply(self.params, ['w1'])
         self.bias_initializer.apply(self.params, ['b1'])
 
@@ -247,7 +255,10 @@ class BatchNorm(Layer):
         if beta_initializer is None:
             self.beta_initializer = initializers.Zeros()
 
-    def initialize(self):
+    def initialize(self, optimizer=None):
+        super().initialize(optimizer=optimizer)
+
+        # Initialize params
         self.gamma_initializer.apply(self.params, ['gamma'])
         self.beta_initializer.apply(self.params, ['beta'])
 
@@ -272,6 +283,7 @@ class BatchNorm(Layer):
                 moving_var = self.momentum * self.params_fixed['moving_var'] + (1.0 - self.momentum) * var
 
             # Compute bias correction
+            # (Not working! It's too aggressive)
             if self.bias_correction and self.fw_steps <= 1000:  # Limit set to prevent overflow
                 bias_correction = 1.0/(1-self.momentum**self.fw_steps)
                 moving_mu *= bias_correction

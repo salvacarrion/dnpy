@@ -40,7 +40,7 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        opt=SGD(lr=0.01),
+        optimizer=RMSProp(lr=0.01),
         losses=[losses.MSE()],
         metrics=[metrics.MSE(), metrics.MAE()],
         debug=False

@@ -23,9 +23,11 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
    
 - **Optimizers:**
     - SGD
-    - Momentum 
-    - RMSprop => Pending...
-    - Adam => Pending...
+        - Momentum
+        - Nesterov
+        - Bias correction
+    - RMSprop
+    - Adam
 
 - **Losses:**
     - MSE
@@ -62,8 +64,9 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - Multi-loss support
     - Set modes
     - Freeze layer
-    - Gradient checking => Pending...
+    - Learning rate decay => Pending...
     - EarlyStopping => Pending...
+    - Gradient checking => Pending...
     - Load/Save model => Pending...
     
     

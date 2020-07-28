@@ -54,7 +54,7 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        opt=SGD(lr=0.1),
+        optimizer=Adam(lr=0.1),
         losses=[losses.CrossEntropy()],
         metrics=[metrics.CategoricalAccuracy()],
         debug=False
@@ -71,7 +71,7 @@ def main():
                 print_rate=10)
 
     # Evaluate
-    m = mymodel.evaluate([x_test], [y_test], batch_size=batch_size)
+    # m = mymodel.evaluate([x_test], [y_test], batch_size=batch_size)
 
 
 if __name__ == "__main__":

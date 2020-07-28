@@ -41,7 +41,7 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        opt=SGD(lr=1.0),
+        optimizer=SGD(lr=1.0, momentum=0.9, nesterov=False),
         losses=[losses.Hinge()],
         metrics=[metrics.BinaryAccuracy(threshold=0.0), metrics.MAE()],
         debug=False
