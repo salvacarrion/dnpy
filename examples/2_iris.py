@@ -5,6 +5,7 @@ from dnpy.net import *
 from dnpy.optimizers import *
 from dnpy.regularizers import *
 from dnpy import metrics, losses
+from dnpy import utils
 
 # For debugging
 np.random.seed(42)
@@ -22,9 +23,7 @@ def main():
 
     # Classes to categorical
     num_classes = 3
-    tmp = np.zeros((len(X), num_classes))
-    tmp[np.arange(Y.size), Y] = 1.0
-    Y = tmp
+    Y = utils.to_categorical(Y, num_classes=num_classes)
 
     # Shuffle dataset
     idxs = np.arange(len(X))
@@ -42,14 +41,14 @@ def main():
     epochs = 1000
 
     # Define architecture
-    l_in = Input(shape=(len(x_train[0]),))
+    l_in = Input(shape=x_train[0].shape)
     l = Dense(l_in, 20, kernel_regularizer=L2(lmda=0.01), bias_regularizer=L1(lmda=0.01))
     l = Relu(l)
     l = Dense(l, 15)
     l = BatchNorm(l)
     l = Dropout(l, 0.1)
     l = Relu(l)
-    l = Dense(l, 3)
+    l = Dense(l, num_classes)
     l_out = Softmax(l)
 
     # Build network

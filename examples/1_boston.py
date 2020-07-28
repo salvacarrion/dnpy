@@ -34,7 +34,7 @@ def main():
     epochs = 1000
 
     # Define architecture
-    l_in = Input(shape=(len(x_train[0]),))
+    l_in = Input(shape=x_train[0].shape)
     l = l_in
     l = Dense(l, 20)
     l = Relu(l)

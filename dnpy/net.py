@@ -328,5 +328,7 @@ class Net:
             p_oshape = l.parent.output.shape if l.parent else l.input.shape
             print(f"#{i+1}:\t{l.name}\t\t-\t{p_oshape}\t=>\t{l.output.shape}")
 
+        print('')
+
         # Set previous mode
         self.set_mode(previous_mode)
