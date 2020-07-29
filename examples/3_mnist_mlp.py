@@ -1,5 +1,4 @@
 from keras import datasets
-from matplotlib import pyplot as plt
 
 
 from dnpy.layers import *
@@ -22,14 +21,14 @@ def main():
     x_train = x_train/255.0
     x_test = x_test/255.0
 
-    # Reshape
-    x_train = x_train.reshape((-1, 784))
-    x_test = x_test.reshape((-1, 784))
-
     # Classes to categorical
     num_classes = 10
     y_train = utils.to_categorical(y_train, num_classes=num_classes)
     y_test = utils.to_categorical(y_test, num_classes=num_classes)
+
+    # Shuffle dataset
+    x_train, y_train = utils.shuffle_dataset(x_train, y_train)
+    x_test, y_test = utils.shuffle_dataset(x_test, y_test)
 
     # Params *********************************
     batch_size = int(len(x_train)/10)
@@ -38,7 +37,6 @@ def main():
     # Define architecture
     l_in = Input(shape=x_train[0].shape)
     l = Reshape(l_in, shape=(28*28,))
-    l = Relu(Dense(l_in, 1024))
     l = Relu(Dense(l, 1024))
     l = Relu(Dense(l, 1024))
     l_out = Softmax(Dense(l, num_classes))
@@ -48,10 +46,11 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        optimizer=Adam(lr=0.1),
+        optimizer=Adam(lr=0.001),
         losses=[losses.CrossEntropy()],
         metrics=[metrics.CategoricalAccuracy()],
-        debug=False
+        debug=False,
+        smart_derivatives=True,
     )
 
     # Print model

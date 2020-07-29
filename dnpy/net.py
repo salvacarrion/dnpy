@@ -1,5 +1,7 @@
 import math
 import numpy as np
+from dnpy.layers import Softmax
+from dnpy.losses import CrossEntropy
 
 
 def check_datasets(x_train, y_train, x_test, y_test):
@@ -43,7 +45,7 @@ class Net:
         self.debug = False
         self.mode = 'test'
 
-    def build(self, l_in, l_out, optimizer, losses, metrics, debug=False):
+    def build(self, l_in, l_out, optimizer, losses, metrics, debug=False, smart_derivatives=False):
         self.l_in = l_in
         self.l_out = l_out
         self.fts_layers = []
@@ -52,6 +54,7 @@ class Net:
         self.losses = losses
         self.metrics = metrics
         self.debug = debug
+        self.smart_derivatives = smart_derivatives
 
         # Topological sort
         self.bts()
@@ -240,6 +243,15 @@ class Net:
         for l in self.fts_layers:
             l.debug = self.debug
             l.initialize(optimizer=self.optimizer)
+
+        # Config special derivatives (speed-up)
+        if self.smart_derivatives:
+            for l in self.l_out:
+                for lo in self.losses:
+                    if isinstance(l, Softmax) and isinstance(lo, CrossEntropy):
+                        print("[INFO] Using derivative speed-up: 'CrossEntropy(Softmax(z))'")
+                        lo.softmax_output = True
+                        l.ce_backward = True
 
     def do_delta(self, losses):
         for i in range(len(self.l_out)):

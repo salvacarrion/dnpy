@@ -77,6 +77,7 @@ class CrossEntropy(Loss):
 
     def __init__(self, name="CrossEntropy"):
         super().__init__(name=name)
+        self.softmax_output = False
 
     def compute_loss(self, y_pred, y_target):
         # Compute loss: -SUM(p(x) * log q(x_))
@@ -85,8 +86,10 @@ class CrossEntropy(Loss):
         return loss
 
     def compute_delta(self, y_pred, y_target):
-        # d_loss = y_target  # Only valid when the output layer is a softmax
-        d_loss = y_target.astype(float) * 1/(y_pred+self.epsilon)
+        if self.softmax_output:
+            d_loss = y_target  # Only valid when the output layer is a softmax
+        else:
+            d_loss = y_target.astype(float) * 1/(y_pred+self.epsilon)
         d_loss = -1.0 * d_loss
         return d_loss
 

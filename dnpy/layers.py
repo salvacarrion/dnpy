@@ -184,6 +184,7 @@ class Softmax(Layer):
         self.oshape = self.parent.oshape
 
         self.stable = stable
+        self.ce_backward = False
 
     def forward(self):
         if self.stable:
@@ -196,12 +197,15 @@ class Softmax(Layer):
         self.output = exps/sums
 
     def backward(self):
-        self.parent.delta = np.zeros_like(self.output)
-        m = self.output.shape[0]
-        for i in range(m):
-            SM = self.output[i, :].reshape((-1, 1))
-            jac = np.diagflat(self.output[i, :]) - np.dot(SM, SM.T)
-            self.parent.delta[i, :] = np.dot(jac, self.delta[i, :])
+        if self.ce_backward:  # Only valid for a Cross-Entropy loss
+            self.parent.delta = self.output + self.delta
+        else:  # Generic
+            self.parent.delta = np.zeros_like(self.output)
+            m = self.output.shape[0]
+            for i in range(m):
+                SM = self.output[i, :].reshape((-1, 1))
+                jac = np.diagflat(self.output[i, :]) - np.dot(SM, SM.T)
+                self.parent.delta[i, :] = np.dot(jac, self.delta[i, :])
 
 
 class Dropout(Layer):
