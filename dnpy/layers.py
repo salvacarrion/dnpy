@@ -184,7 +184,7 @@ class Softmax(Layer):
         self.oshape = self.parent.oshape
 
         self.stable = stable
-        self.ce_backward = False
+        self.ce_loss = False
 
     def forward(self):
         if self.stable:
@@ -197,7 +197,7 @@ class Softmax(Layer):
         self.output = exps/sums
 
     def backward(self):
-        if self.ce_backward:  # Only valid for a Cross-Entropy loss
+        if self.ce_loss:  # Only valid for a Cross-Entropy loss
             self.parent.delta = self.output + self.delta
         else:  # Generic
             self.parent.delta = np.zeros_like(self.output)
