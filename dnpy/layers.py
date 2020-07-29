@@ -198,7 +198,7 @@ class Softmax(Layer):
 
     def backward(self):
         if self.ce_loss:  # Only valid for a Cross-Entropy loss
-            self.parent.delta = self.output + self.delta
+            self.parent.delta = self.delta
         else:  # Generic
             self.parent.delta = np.zeros_like(self.output)
             m = self.output.shape[0]

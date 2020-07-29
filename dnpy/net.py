@@ -251,7 +251,7 @@ class Net:
                     if isinstance(l, Softmax) and isinstance(lo, CrossEntropy):
                         print("[INFO] Using derivative speed-up: 'CrossEntropy(Softmax(z))'")
                         lo.softmax_output = True
-                        l.ce_backward = True
+                        l.ce_loss = True
 
     def do_delta(self, losses):
         for i in range(len(self.l_out)):
