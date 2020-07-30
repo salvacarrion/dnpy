@@ -351,4 +351,39 @@ class Reshape(Layer):
         self.parents[0].delta = np.reshape(self.delta, newshape=new_shape)
 
 
+class Add(Layer):
+
+    def __init__(self, l_in):
+        super().__init__(name="Add")
+
+        # Check inputs
+        if not isinstance(l_in, l_in):
+            raise ValueError("A list of layers is expected")
+
+        # Check number of inputs
+        if len(l_in) < 2:
+            raise ValueError("A minimum of two inputs is expected")
+
+        # Check if all layers have the same dimension
+        dim1 = self.parents[0].output.shape
+        for i in range(1, len(self.parents)):
+            dim2 = self.parents[i].output.shape
+            if dim1 != dim2:
+                raise ValueError(f"Layers with different dimensions: {dim1} vs {dim2}")
+
+        # Add layers
+        self.parents = l_in
+        self.oshape = self.parents[0].oshape
+
+    def forward(self):
+        self.output = np.array(self.parents[0].output)
+        for i in range(1, len(self.parents)):
+            self.output += self.parents[i].output
+
+    def backward(self):
+        for i in range(len(self.parents)):
+            self.parents[i].delta = self.delta
+
+
+
 

@@ -12,7 +12,7 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - Tanh
     - Softmax
     - Dropout
-    - Add => Pending...
+    - Add
     - Reshape
     - BathNorm
     - Conv => Pending...
