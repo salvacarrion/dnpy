@@ -8,15 +8,14 @@ class Layer:
         self.name = name
         self.training = False
 
-        self.input = None
+        self.parents = []
         self.output = None
         self.delta = None
 
+        self.oshape = None  # To remove
+
         self.params = {}
         self.grads = {}
-
-        self.parent = None
-        self.oshape = None
 
         self.epsilon = 10e-8
         self.frozen = False
@@ -36,9 +35,9 @@ class Layer:
 
     def print_stats(self, print_tensors=False):
             print(f"\t=> [DEBUG]: {self.name} layer:")
-            if self.parent is not None:
-                print(f"\t\t [input]\tshape={self.parent.output.shape}; max={float(np.max(self.parent.output))}; min={float(np.min(self.parent.output))}; avg={float(np.mean(self.parent.output))}")
-                if print_tensors: print(self.parent.output)
+            if self.parents[0] is not None:
+                print(f"\t\t [input]\tshape={self.parents[0].output.shape}; max={float(np.max(self.parents[0].output))}; min={float(np.min(self.parents[0].output))}; avg={float(np.mean(self.parents[0].output))}")
+                if print_tensors: print(self.parents[0].output)
 
             print(f"\t\t [output]\tshape={self.output.shape}; max={float(np.max(self.output))}; min={float(np.min(self.output))}; avg={float(np.mean(self.output))}")
             if print_tensors: print(self.output)
@@ -63,7 +62,7 @@ class Input(Layer):
         self.oshape = shape
 
     def forward(self):
-        self.output = self.input
+        pass
 
     def backward(self):
         pass
@@ -74,12 +73,12 @@ class Dense(Layer):
     def __init__(self, l_in, units, kernel_initializer=None, bias_initializer=None,
                  kernel_regularizer=None, bias_regularizer=None):
         super().__init__(name="Dense")
-        self.parent = l_in
+        self.parents[0] = l_in
         self.oshape = (units,)
         self.units = units
 
         # Params and grads
-        self.params = {'w1': np.zeros((self.parent.oshape[0], self.units)),
+        self.params = {'w1': np.zeros((self.parents[0].oshape[0], self.units)),
                        'b1': np.zeros((1, self.units))}
         self.grads = {'w1': np.zeros_like(self.params['w1']),
                       'b1': np.zeros_like(self.params['b1'])}
@@ -105,15 +104,15 @@ class Dense(Layer):
         self.bias_initializer.apply(self.params, ['b1'])
 
     def forward(self):
-        self.output = np.dot(self.parent.output, self.params['w1']) + self.params['b1']
+        self.output = np.dot(self.parents[0].output, self.params['w1']) + self.params['b1']
 
     def backward(self):
         # Each layer sets the delta of their parent (m,13)=>(m, 10)=>(m, 1)=>(1,1)
-        self.parent.delta = np.dot(self.delta, self.params['w1'].T)
+        self.parents[0].delta = np.dot(self.delta, self.params['w1'].T)
 
         # Compute gradients
         m = self.output.shape[0]
-        g_w1 = np.dot(self.parent.output.T, self.delta)
+        g_w1 = np.dot(self.parents[0].output.T, self.delta)
         g_b1 = np.sum(self.delta, axis=0, keepdims=True)
 
         # Add regularizers (if needed)
@@ -130,67 +129,67 @@ class Relu(Layer):
 
     def __init__(self, l_in):
         super().__init__(name="Relu")
-        self.parent = l_in
+        self.parents[0] = l_in
 
-        self.oshape = self.parent.oshape
+        self.oshape = self.parents[0].oshape
         self.gate = None
 
     def forward(self):
-        self.gate = (self.parent.output > 0).astype(float)
-        self.output = self.gate * self.parent.output
+        self.gate = (self.parents[0].output > 0).astype(float)
+        self.output = self.gate * self.parents[0].output
 
     def backward(self):
         # Each layer sets the delta of their parent (m,13)=>(m, 10)=>(m, 1)=>(1,1)
-        self.parent.delta = self.gate * self.delta
+        self.parents[0].delta = self.gate * self.delta
 
 
 class Sigmoid(Layer):
 
     def __init__(self, l_in):
         super().__init__(name="Sigmoid")
-        self.parent = l_in
+        self.parents[0] = l_in
 
-        self.oshape = self.parent.oshape
+        self.oshape = self.parents[0].oshape
 
     def forward(self):
-        self.output = 1.0 / (1.0 + np.exp(-self.parent.output))
+        self.output = 1.0 / (1.0 + np.exp(-self.parents[0].output))
 
     def backward(self):
-        self.parent.delta = self.delta * (self.output * (1 - self.output))
+        self.parents[0].delta = self.delta * (self.output * (1 - self.output))
 
 
 class Tanh(Layer):
 
     def __init__(self, l_in):
         super().__init__(name="Tanh")
-        self.parent = l_in
+        self.parents[0] = l_in
 
-        self.oshape = self.parent.oshape
+        self.oshape = self.parents[0].oshape
 
     def forward(self):
-        a = np.exp(self.parent.output)
-        b = np.exp(-self.parent.output)
+        a = np.exp(self.parents[0].output)
+        b = np.exp(-self.parents[0].output)
         self.output = (a - b) / (a + b)
 
     def backward(self):
-        self.parent.delta = self.delta * (1 - self.output**2)
+        self.parents[0].delta = self.delta * (1 - self.output**2)
 
 
 class Softmax(Layer):
 
     def __init__(self, l_in, stable=True):
         super().__init__(name="Softmax")
-        self.parent = l_in
-        self.oshape = self.parent.oshape
+        self.parents[0] = l_in
+        self.oshape = self.parents[0].oshape
 
         self.stable = stable
         self.ce_loss = False
 
     def forward(self):
         if self.stable:
-            z = self.parent.output - np.max(self.parent.output, axis=1, keepdims=True)
+            z = self.parents[0].output - np.max(self.parents[0].output, axis=1, keepdims=True)
         else:
-            z = self.parent.output
+            z = self.parents[0].output
 
         exps = np.exp(z)
         sums = np.sum(exps, axis=1, keepdims=True)
@@ -198,50 +197,50 @@ class Softmax(Layer):
 
     def backward(self):
         if self.ce_loss:  # Only valid for a Cross-Entropy loss
-            self.parent.delta = self.delta
+            self.parents[0].delta = self.delta
         else:  # Generic
-            self.parent.delta = np.zeros_like(self.output)
+            self.parents[0].delta = np.zeros_like(self.output)
             m = self.output.shape[0]
             for i in range(m):
                 SM = self.output[i, :].reshape((-1, 1))
                 jac = np.diagflat(self.output[i, :]) - np.dot(SM, SM.T)
-                self.parent.delta[i, :] = np.dot(jac, self.delta[i, :])
+                self.parents[0].delta[i, :] = np.dot(jac, self.delta[i, :])
 
 
 class Dropout(Layer):
 
     def __init__(self, l_in, rate=0.5):
         super().__init__(name="Dropout")
-        self.parent = l_in
+        self.parents[0] = l_in
 
-        self.oshape = self.parent.oshape
+        self.oshape = self.parents[0].oshape
         self.rate = rate
         self.gate = None
 
     def forward(self):
         if self.training:
-            self.gate = (np.random.random(self.parent.output.shape) > self.rate).astype(float)
-            self.output = self.parent.output * self.gate
+            self.gate = (np.random.random(self.parents[0].output.shape) > self.rate).astype(float)
+            self.output = self.parents[0].output * self.gate
         else:
-            self.output = self.parent.output
+            self.output = self.parents[0].output
 
     def backward(self):
-        self.parent.delta = self.delta * self.gate
+        self.parents[0].delta = self.delta * self.gate
 
 
 class BatchNorm(Layer):
 
     def __init__(self, l_in, momentum=0.99, bias_correction=False, gamma_initializer=None, beta_initializer=None):
         super().__init__(name="BatchNorm")
-        self.parent = l_in
+        self.parents[0] = l_in
 
-        self.oshape = self.parent.oshape
+        self.oshape = self.parents[0].oshape
 
         # Params and grads
-        self.params = {'gamma': np.ones(self.parent.oshape),
-                       'beta': np.zeros(self.parent.oshape)}
-        self.params_fixed = {'moving_mu': np.zeros(self.parent.oshape),
-                             'moving_var': np.ones(self.parent.oshape)}
+        self.params = {'gamma': np.ones(self.parents[0].oshape),
+                       'beta': np.zeros(self.parents[0].oshape)}
+        self.params_fixed = {'moving_mu': np.zeros(self.parents[0].oshape),
+                             'moving_var': np.ones(self.parents[0].oshape)}
         self.grads = {'gamma': np.zeros_like(self.params["gamma"]),
                       'beta': np.zeros_like(self.params["beta"])}
         self.cache = {}
@@ -267,7 +266,7 @@ class BatchNorm(Layer):
         self.beta_initializer.apply(self.params, ['beta'])
 
     def forward(self):
-        x = self.parent.output
+        x = self.parents[0].output
 
         if self.training:
             mu = np.mean(x, axis=0, keepdims=True)
@@ -326,7 +325,7 @@ class BatchNorm(Layer):
                 - (x_norm * np.sum(dxnorm*x_norm, axis=0, keepdims=True))
         )
 
-        self.parent.delta = df_xi
+        self.parents[0].delta = df_xi
         self.grads["gamma"] += np.sum(dgamma, axis=0)
         self.grads["beta"] += np.sum(dbeta, axis=0)
 
@@ -335,22 +334,21 @@ class Reshape(Layer):
 
     def __init__(self, l_in, shape):
         super().__init__(name="Reshape")
-        self.parent = l_in
+        self.parents[0] = l_in
 
         # Check layer compatibility
-        if np.prod(self.parent.oshape) != np.prod(shape):
+        if np.prod(self.parents[0].oshape) != np.prod(shape):
             raise ValueError(f"Not compatible shapes ({self.name})")
 
         self.oshape = shape
 
     def forward(self):
         new_shape = (-1, *self.oshape)  # Due to batch
-        self.output = np.reshape(self.parent.output, newshape=new_shape)
+        self.output = np.reshape(self.parents[0].output, newshape=new_shape)
 
     def backward(self):
-        new_shape = (-1, *self.parent.oshape)  # Due to batch
-        self.parent.delta = np.reshape(self.delta, newshape=new_shape)
-
+        new_shape = (-1, *self.parents[0].oshape)  # Due to batch
+        self.parents[0].delta = np.reshape(self.delta, newshape=new_shape)
 
 
 
