@@ -21,6 +21,8 @@ class Layer:
         self.frozen = False
         self.optimizer = None
 
+        self.index = 0  # For topological sort
+
     def initialize(self, optimizer=None):
         # Each optimizer must be independent (internal params per layer)
         if optimizer:
@@ -57,8 +59,8 @@ class Layer:
 
 class Input(Layer):
 
-    def __init__(self, shape):
-        super().__init__(name="Input")
+    def __init__(self, shape, name="Input"):
+        super().__init__(name=name)
         self.oshape = shape
 
     def forward(self):
@@ -71,9 +73,9 @@ class Input(Layer):
 class Dense(Layer):
 
     def __init__(self, l_in, units, kernel_initializer=None, bias_initializer=None,
-                 kernel_regularizer=None, bias_regularizer=None):
-        super().__init__(name="Dense")
-        self.parents[0] = l_in
+                 kernel_regularizer=None, bias_regularizer=None, name="Dense"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
         self.oshape = (units,)
         self.units = units
 
@@ -127,9 +129,9 @@ class Dense(Layer):
 
 class Relu(Layer):
 
-    def __init__(self, l_in):
-        super().__init__(name="Relu")
-        self.parents[0] = l_in
+    def __init__(self, l_in, name="Relu"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
 
         self.oshape = self.parents[0].oshape
         self.gate = None
@@ -145,9 +147,9 @@ class Relu(Layer):
 
 class Sigmoid(Layer):
 
-    def __init__(self, l_in):
-        super().__init__(name="Sigmoid")
-        self.parents[0] = l_in
+    def __init__(self, l_in, name="Sigmoid"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
 
         self.oshape = self.parents[0].oshape
 
@@ -160,9 +162,9 @@ class Sigmoid(Layer):
 
 class Tanh(Layer):
 
-    def __init__(self, l_in):
-        super().__init__(name="Tanh")
-        self.parents[0] = l_in
+    def __init__(self, l_in, name="Tanh"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
 
         self.oshape = self.parents[0].oshape
 
@@ -177,9 +179,9 @@ class Tanh(Layer):
 
 class Softmax(Layer):
 
-    def __init__(self, l_in, stable=True):
-        super().__init__(name="Softmax")
-        self.parents[0] = l_in
+    def __init__(self, l_in, stable=True, name="Softmax"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
         self.oshape = self.parents[0].oshape
 
         self.stable = stable
@@ -209,9 +211,9 @@ class Softmax(Layer):
 
 class Dropout(Layer):
 
-    def __init__(self, l_in, rate=0.5):
-        super().__init__(name="Dropout")
-        self.parents[0] = l_in
+    def __init__(self, l_in, rate=0.5, name="Dropout"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
 
         self.oshape = self.parents[0].oshape
         self.rate = rate
@@ -230,9 +232,10 @@ class Dropout(Layer):
 
 class BatchNorm(Layer):
 
-    def __init__(self, l_in, momentum=0.99, bias_correction=False, gamma_initializer=None, beta_initializer=None):
-        super().__init__(name="BatchNorm")
-        self.parents[0] = l_in
+    def __init__(self, l_in, momentum=0.99, bias_correction=False, gamma_initializer=None,
+                 beta_initializer=None, name="BatchNorm"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
 
         self.oshape = self.parents[0].oshape
 
@@ -332,9 +335,9 @@ class BatchNorm(Layer):
 
 class Reshape(Layer):
 
-    def __init__(self, l_in, shape):
-        super().__init__(name="Reshape")
-        self.parents[0] = l_in
+    def __init__(self, l_in, shape, name="Reshape"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
 
         # Check layer compatibility
         if np.prod(self.parents[0].oshape) != np.prod(shape):
@@ -353,11 +356,11 @@ class Reshape(Layer):
 
 class Add(Layer):
 
-    def __init__(self, l_in):
-        super().__init__(name="Add")
+    def __init__(self, l_in, name="Add"):
+        super().__init__(name=name)
 
         # Check inputs
-        if not isinstance(l_in, l_in):
+        if not isinstance(l_in, list):
             raise ValueError("A list of layers is expected")
 
         # Check number of inputs
@@ -365,9 +368,9 @@ class Add(Layer):
             raise ValueError("A minimum of two inputs is expected")
 
         # Check if all layers have the same dimension
-        dim1 = self.parents[0].output.shape
-        for i in range(1, len(self.parents)):
-            dim2 = self.parents[i].output.shape
+        dim1 = l_in[0].oshape
+        for i in range(1, len(l_in)):
+            dim2 = l_in[i].oshape
             if dim1 != dim2:
                 raise ValueError(f"Layers with different dimensions: {dim1} vs {dim2}")
 

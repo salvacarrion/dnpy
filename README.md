@@ -126,7 +126,7 @@ mymodel = Net()
 mymodel.build(
     l_in=[l_in],
     l_out=[l_out],
-    opt=SGD(lr=0.1),
+    optimizer=Adam(lr=0.01),
     losses=[losses.CrossEntropy()],
     metrics=[metrics.CategoricalAccuracy()],
     debug=False

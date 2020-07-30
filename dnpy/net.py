@@ -32,6 +32,58 @@ def check_datasets(x_train, y_train, x_test, y_test):
             assert x_i.shape[0] == y_i.shape[0]  # num. samples
 
 
+def get_layers(net):
+    # Get all layers in a single list
+    vertices = []
+    visited = set()
+
+    queue = list(net.l_out)  # shallow copy
+    while queue:  # Might be multiple outputs
+        node = queue.pop(0)  # Pop first element
+        _id = id(node)
+
+        # Check if this layer has already been explored
+        if _id not in visited:
+            visited.add(_id)
+            vertices.append(node)
+
+            # Add new layers to the queu
+            for node_parent in node.parents:
+                queue.append(node_parent)
+
+    return vertices
+
+
+def topological_sort_helper(i, nodes, visited, stack):
+    # Mark the current node as visited.
+    visited[i] = True
+
+    # Walk through each node adjacent to this vertex
+    for node in nodes[i].parents:
+        if not visited[node.index]:
+            topological_sort_helper(node.index, nodes, visited, stack)
+
+    # Push current vertex to stack which stores result
+    stack.insert(0, nodes[i])
+
+
+def topological_sort(net):
+    # Topologial sort
+    nodes = get_layers(net)
+    visited = [False] * len(nodes)
+    stack = []
+
+    # Set index in each layer
+    for i, node in enumerate(nodes):
+        node.index = i
+
+    # Recursive call for each vertex
+    for node in nodes:
+        if not visited[node.index]:
+            topological_sort_helper(node.index, nodes, visited, stack)
+    return stack
+
+
 class Net:
 
     def __init__(self):
@@ -103,11 +155,7 @@ class Net:
         self.fts_layers.reverse()
 
     def bts(self):
-        layer = self.l_out[0]  # TODO: Temp! Topological sort needed
-        while layer.parent:
-            self.bts_layers.append(layer)
-            layer = layer.parent
-        self.bts_layers.append(layer)  # Add last
+        self.bts_layers = topological_sort(self)
 
     def fit(self, x_train, y_train, batch_size, epochs, x_test=None, y_test=None, evaluate_epoch=True, print_rate=1):
         # Check input/output compatibility
@@ -265,7 +313,7 @@ class Net:
     def feed_input(self, x):
         # Feed batch into the network
         for j in range(len(self.l_in)):
-            self.l_in[j].input = x[j]
+            self.l_in[j].output = x[j]
 
     def forward(self):
         for l in self.fts_layers:
@@ -329,16 +377,23 @@ class Net:
         self.set_mode('test')
 
         # Feed random input to input layers
+        x_train_mb = []
         for i in range(len(self.l_in)):
             x = np.random.random([batch_size, *self.l_in[i].oshape])
-            self.l_in[i].input = x
+            x_train_mb.append(x)
+
+        # Feed network
+        self.feed_input(x_train_mb)
 
         # Forward
         self.forward()
 
         for i, l in enumerate(self.fts_layers):
-            p_oshape = l.parent.output.shape if l.parent else l.input.shape
-            print(f"#{i+1}:\t{l.name}\t\t-\t{p_oshape}\t=>\t{l.output.shape}")
+            ishapes = []
+            for l_in in l.parents:
+                ishapes.append(l_in.output.shape)
+            ishapes = ishapes if len(ishapes) > 1 else l.output.shape  # other / input
+            print(f"#{i+1}:\t{l.name}\t\t-\t{ishapes}\t=>\t{l.output.shape}")
 
         print('')
 
