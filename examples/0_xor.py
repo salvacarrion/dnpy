@@ -43,7 +43,7 @@ def main():
         l_out=[l_out],
         optimizer=SGD(lr=1.0, momentum=0.9, nesterov=False),
         losses=[losses.Hinge()],
-        metrics=[metrics.BinaryAccuracy(threshold=0.0), metrics.MAE()],
+        metrics=[[metrics.BinaryAccuracy(threshold=0.0), metrics.MAE()]],
         debug=False
     )
 

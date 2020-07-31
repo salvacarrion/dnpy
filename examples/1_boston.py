@@ -50,7 +50,7 @@ def main():
         l_out=[l_out],
         optimizer=RMSProp(lr=0.01),
         losses=[losses.MSE()],
-        metrics=[metrics.MSE(), metrics.MAE()],
+        metrics=[[metrics.MSE(), metrics.MAE()]],
         debug=False
     )
 

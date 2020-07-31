@@ -96,18 +96,17 @@ class Net:
             assert len(self.l_out) == len(self.losses) == len(losses)
 
             for i in range(len(self.losses)):
-                str_l += ["{}={:.5f}".format(self.losses[i].name, float(losses[i][0]))]
+                str_l += ["{}={:.5f}".format(self.losses[i].name, float(losses[i]))]
 
         # Metrics
         if metrics is not None:
             assert len(self.l_out) == len(metrics)
-            assert len(self.metrics) == len(metrics[0])
 
             for i in range(len(self.l_out)):  # N metrics for M output layers
-                m = []
-                for j in range(len(self.metrics)):
-                    m += ["{}={:.5f}".format(self.metrics[j].name, float(metrics[i][j]))]
-                str_m += ["{}: ({})".format(self.l_out[i].name, ", ".join(m))]
+                tmp = []
+                for j in range(len(self.metrics[i])):
+                    tmp += ["{}={:.5f}".format(self.metrics[i][j].name, float(metrics[i][j]))]
+                str_m += ["{}: ({})".format(self.l_out[i].name, ", ".join(tmp))]
         return [str_l, str_m]
 
     def get_minibatch(self, x_train, y_train, batch_i, batch_size):
@@ -179,7 +178,7 @@ class Net:
                 self.forward()
 
                 # Compute loss and metrics
-                b_losses = self.compute_losses(y_target=y_train_mb)
+                b_losses, b_deltas = self.compute_losses(y_target=y_train_mb)
                 if (i % print_rate) == 0:
                     b_metrics = self.compute_metrics(y_target=y_train_mb)
                     str_eval = self._format_eval(b_losses, b_metrics)
@@ -187,7 +186,7 @@ class Net:
 
                 # Backward
                 self.reset_grads()
-                self.do_delta(b_losses)
+                self.do_delta(b_deltas)
                 self.backward()
                 self.apply_grads()
 
@@ -202,7 +201,7 @@ class Net:
 
                 # Evaluate test
                 if x_test is not None and y_test is not None:
-                    lo, me = self.evaluate(x_test, y_test, batch_size=min(1, len(x_test)))
+                    lo, me = self.evaluate(x_test, y_test, batch_size=1)
                     str_eval = self._format_eval(lo, me)
                     print(f"\t - Validation losses[{', '.join(str_eval[0])}]; Validation metrics[{'; '.join(str_eval[1])}];")
 
@@ -242,8 +241,7 @@ class Net:
             self.forward()
 
             # Losses (one per output layer)
-            lo = self.compute_losses(y_target=y_test_mb)
-            lo = [l[0] for l in lo]  # Ignore deltas
+            lo, de = self.compute_losses(y_target=y_test_mb)
             losses.append(lo)
 
             # Metrics (n per output layer)
@@ -252,13 +250,13 @@ class Net:
 
         # List to array
         losses = np.array(losses)  # 2 dims (samples, losses)
-        metrics = np.array(metrics)  # 3 dims (samples, metrics, outputs)
+        metrics = [np.array(row) for row in list(zip(*metrics))]  # Transpose and convert to a list of arrays
 
         # Compute average
-        losses = np.mean(losses, axis=0, keepdims=True)
-        metrics = np.mean(metrics, axis=0)
-        assert losses.ndim == 2
-        assert metrics.ndim == 2
+        losses = np.mean(losses, axis=0)
+        metrics = [np.mean(me, axis=0) for me in metrics]
+        assert len(losses) == len(self.losses)
+        assert len(metrics) == len(self.losses)
 
         return losses, metrics
 
@@ -286,9 +284,9 @@ class Net:
                         lo.softmax_output = True
                         l.ce_loss = True
 
-    def do_delta(self, losses):
+    def do_delta(self, deltas):
         for i in range(len(self.l_out)):
-            self.l_out[i].delta = losses[i][1]  # (loss, delta)
+            self.l_out[i].delta = deltas[i]
 
     def reset_grads(self):
         for l in self.fts_layers:
@@ -320,13 +318,18 @@ class Net:
 
     def compute_losses(self, y_target):
         losses = []
+        deltas = []
         for i in range(len(self.losses)):  # 1 loss per output layer
             y_pred_i = self.l_out[i].output
             y_target_i = y_target[i]
 
+            # Save losses
             loss = self.losses[i].compute_loss(y_pred_i, y_target_i)
+            losses.append(loss)
+
+            # Save deltas
             delta = self.losses[i].compute_delta(y_pred_i, y_target_i)
-            losses.append((loss, delta))
+            deltas.append(delta)
 
             # Check for errors
             if math.isnan(loss):
@@ -338,17 +341,17 @@ class Net:
             elif np.isinf(delta).any():
                 raise ValueError("Info in the delta")
 
-        return losses
+        return losses, deltas
 
     def compute_metrics(self, y_target):
         metrics = []
         for i in range(len(self.l_out)):  # N metrics for M output layers
             metrics_l_out = []
-            for j in range(len(self.metrics)):
+            for me in self.metrics[i]:
                 y_pred_i = self.l_out[i].output
                 y_target_i = y_target[i]
-                me = self.metrics[j].compute_metric(y_pred_i, y_target_i)
-                metrics_l_out.append(me)
+                values = me.compute_metric(y_pred_i, y_target_i)
+                metrics_l_out.append(values)
             metrics.append(metrics_l_out)
         return metrics
 

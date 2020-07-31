@@ -65,7 +65,7 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - Set modes
     - Freeze layers
     - Smart derivatives
-    - Topological sort => Pending...
+    - Topological sort
     - Learning rate decay => Pending...
     - EarlyStopping => Pending...
     - Gradient checking => Pending...
@@ -128,7 +128,7 @@ mymodel.build(
     l_out=[l_out],
     optimizer=Adam(lr=0.01),
     losses=[losses.CrossEntropy()],
-    metrics=[metrics.CategoricalAccuracy()],
+    metrics=[[metrics.CategoricalAccuracy()]],
     debug=False
 )
 

@@ -58,7 +58,7 @@ def main():
         l_out=[l_out],
         optimizer=Adam(lr=0.1),
         losses=[losses.CrossEntropy()],
-        metrics=[metrics.CategoricalAccuracy()],
+        metrics=[[metrics.CategoricalAccuracy()]],
         debug=False
     )
 
