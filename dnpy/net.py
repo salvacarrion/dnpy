@@ -32,56 +32,27 @@ def check_datasets(x_train, y_train, x_test, y_test):
             assert x_i.shape[0] == y_i.shape[0]  # num. samples
 
 
-def get_layers(net):
-    # Get all layers in a single list
-    vertices = []
-    visited = set()
+def bts_helper(node, mark_temp, mark_permanent, stack):
+    _id = id(node)
 
-    queue = list(net.l_out)  # shallow copy
-    while queue:  # Might be multiple outputs
-        node = queue.pop(0)  # Pop first element
-        _id = id(node)
+    if _id in mark_permanent:
+        return
 
-        # Check if this layer has already been explored
-        if _id not in visited:
-            visited.add(_id)
-            vertices.append(node)
+    if _id in mark_temp:
+        raise RecursionError("Not a DAG")
 
-            # Add new layers to the queu
-            for node_parent in node.parents:
-                queue.append(node_parent)
+    # Mark as temporary
+    mark_temp.add(_id)
 
-    return vertices
+    for pnode in node.parents:
+        bts_helper(pnode, mark_temp, mark_permanent, stack)
 
+    # Remove from temp, add to permanent
+    mark_temp.remove(_id)
+    mark_permanent.add(_id)
 
-def topological_sort_helper(i, nodes, visited, stack):
-    # Mark the current node as visited.
-    visited[i] = True
-
-    # Walk through each node adjacent to this vertex
-    for node in nodes[i].parents:
-        if not visited[node.index]:
-            topological_sort_helper(node.index, nodes, visited, stack)
-
-    # Push current vertex to stack which stores result
-    stack.insert(0, nodes[i])
-
-
-def topological_sort(net):
-    # Topologial sort
-    nodes = get_layers(net)
-    visited = [False] * len(nodes)
-    stack = []
-
-    # Set index in each layer
-    for i, node in enumerate(nodes):
-        node.index = i
-
-    # Recursive call for each vertex
-    for node in nodes:
-        if not visited[node.index]:
-            topological_sort_helper(node.index, nodes, visited, stack)
-    return stack
+    # Add sorted layer
+    stack.insert(0, node)
 
 
 class Net:
@@ -96,6 +67,7 @@ class Net:
         self.metrics = None
         self.debug = False
         self.mode = 'test'
+        self.smart_derivatives = None
 
     def build(self, l_in, l_out, optimizer, losses, metrics, debug=False, smart_derivatives=False):
         self.l_in = l_in
@@ -155,7 +127,20 @@ class Net:
         self.fts_layers.reverse()
 
     def bts(self):
-        self.bts_layers = topological_sort(self)
+        # Topological sort
+        self.bts_layers = []
+        mark_temp = set()
+        mark_permanent = set()
+
+        # Walk from outputs to inputs (there are parents but not childs)
+        for node in self.l_out:  # Might be multiple outputs
+            _id = id(node)
+
+            # Check if this layer has already been explored
+            if _id not in mark_permanent:
+                bts_helper(node, mark_temp, mark_permanent, self.bts_layers)
+
+        assert not mark_temp
 
     def fit(self, x_train, y_train, batch_size, epochs, x_test=None, y_test=None, evaluate_epoch=True, print_rate=1):
         # Check input/output compatibility

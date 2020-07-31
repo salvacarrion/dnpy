@@ -23,6 +23,9 @@ class Layer:
 
         self.index = 0  # For topological sort
 
+    def __str__(self):
+        return self.name
+
     def initialize(self, optimizer=None):
         # Each optimizer must be independent (internal params per layer)
         if optimizer:
