@@ -92,10 +92,14 @@ class Dense(Layer):
         if kernel_initializer is None:
             fan_in, fan_out = self.params['w1'].shape
             self.kernel_initializer = initializers.HeNormal(fan_in=fan_in, fan_out=fan_out)
+        else:
+            self.kernel_initializer = kernel_initializer
 
         # Initialization: bias
         if bias_initializer is None:
             self.bias_initializer = initializers.Zeros()
+        else:
+            self.bias_initializer = kernel_initializer
 
         # Add regularizers
         self.kernel_regularizer = kernel_regularizer
@@ -259,10 +263,14 @@ class BatchNorm(Layer):
         # Initialization: gamma
         if gamma_initializer is None:
             self.gamma_initializer = initializers.Ones()
+        else:
+            self.gamma_initializer = gamma_initializer
 
         # Initialization: beta
         if beta_initializer is None:
             self.beta_initializer = initializers.Zeros()
+        else:
+            self.beta_initializer = beta_initializer
 
     def initialize(self, optimizer=None):
         super().initialize(optimizer=optimizer)
@@ -445,10 +453,14 @@ class Conv2D(Layer):
             #  "num output feature maps * filter height * filter width" / pooling size
             fan_out = out_fm*f_height*f_width
             self.kernel_initializer = initializers.HeNormal(fan_in=fan_in, fan_out=fan_out)
+        else:
+            self.kernel_initializer = kernel_initializer
 
         # Initialization: bias
         if bias_initializer is None:
             self.bias_initializer = initializers.Zeros()
+        else:
+            self.bias_initializer = kernel_initializer
 
         # Add regularizers
         self.kernel_regularizer = kernel_regularizer
@@ -461,6 +473,7 @@ class Conv2D(Layer):
     def initialize(self, optimizer=None):
         super().initialize(optimizer=optimizer)
 
+        # This is not really correct since "w1" contains many filters
         # Initialize params
         self.kernel_initializer.apply(self.params, ['w1'])
         self.bias_initializer.apply(self.params, ['b1'])
