@@ -1,6 +1,6 @@
 import copy
 import numpy as np
-from dnpy import initializers
+from dnpy import initializers, utils
 
 
 class Layer:
@@ -342,6 +342,10 @@ class Reshape(Layer):
         super().__init__(name=name)
         self.parents.append(l_in)
 
+        # Check if shape is inferred
+        if shape == -1 or shape[0] == -1:
+            shape = (int(np.prod(self.parents[0].oshape)),)
+
         # Check layer compatibility
         if np.prod(self.parents[0].oshape) != np.prod(shape):
             raise ValueError(f"Not compatible shapes ({self.name})")
@@ -391,5 +395,151 @@ class Add(Layer):
             self.parents[i].delta = self.delta
 
 
+class Conv2D(Layer):
+
+    def __init__(self, l_in, filters, kernel_size, strides=(1, 1), padding="same",
+                 dilation_rate=(1, 1),
+                 kernel_initializer=None, bias_initializer=None,
+                 kernel_regularizer=None, bias_regularizer=None, name="Conv2D"):
+        super().__init__(name=name)
+
+        # Check layer compatibility
+        if len(l_in.oshape) != 3:
+            raise ValueError(f"Expected a 3D layer ({self.name})")
+
+        # Params
+        self.parents.append(l_in)
+        self.filters = filters
+        self.kernel_size = kernel_size
+        self.strides = strides
+        self.padding = padding
+        self.dilation_rate = dilation_rate
+
+        # Compute sizes
+        _pads = utils.get_padding(padding=padding, input_size=np.array(l_in.oshape),
+                                  kernel_size=np.array(kernel_size), strides=np.array(strides))
+        _oshape = utils.get_output(input_size=np.array(l_in.oshape), kernel_size=np.array(kernel_size),
+                                   strides=np.array(strides), pads=_pads,
+                                   dilation_rate=np.array(dilation_rate))
+        # Output / Pads size
+        self.pads = tuple(_pads*2)  # height, width
+        self.oshape = tuple([self.filters] + _oshape.tolist())
+
+        # Specific pads
+        self.pad_top = self.pads[0]//2
+        self.pad_bottom = self.pads[0]-self.pad_top
+        self.pad_left = self.pads[1]//2
+        self.pad_right = self.pads[1]-self.pad_left
+
+        # Params and grads
+        channels = l_in.oshape[0]
+        self.params = {'w1': np.zeros((self.filters, channels, *self.kernel_size)),
+                       'b1': np.zeros((self.filters,))}
+        self.grads = {'w1': np.zeros_like(self.params['w1']),
+                      'b1': np.zeros_like(self.params['b1'])}
+
+        # Initialization: param
+        if kernel_initializer is None:
+            # There are "num input feature maps * filter height * filter width" inputs to each hidden unit
+            out_fm, in_fm, f_height, f_width = self.params['w1'].shape
+            fan_in = in_fm*f_height*f_width
+
+            #  Each unit in the lower layer receives a gradient from:
+            #  "num output feature maps * filter height * filter width" / pooling size
+            fan_out = out_fm*f_height*f_width
+            self.kernel_initializer = initializers.HeNormal(fan_in=fan_in, fan_out=fan_out)
+
+        # Initialization: bias
+        if bias_initializer is None:
+            self.bias_initializer = initializers.Zeros()
+
+        # Add regularizers
+        self.kernel_regularizer = kernel_regularizer
+        self.bias_regularizer = bias_regularizer
+
+        # Cache
+        self.shape_pad_in = None
+        self.in_fmap = None
+
+    def initialize(self, optimizer=None):
+        super().initialize(optimizer=optimizer)
+
+        # Initialize params
+        self.kernel_initializer.apply(self.params, ['w1'])
+        self.bias_initializer.apply(self.params, ['b1'])
+
+    def forward(self):
+        m = self.parents[0].output.shape[0]  # Batches
+        self.output = np.zeros((m, *self.oshape))
+
+        # Reshape input adding paddings
+        self.shape_pad_in = tuple(np.array(self.parents[0].oshape) + np.array([0, *self.pads]))
+        self.in_fmap = np.zeros((m, *self.shape_pad_in))
+        self.in_fmap[:, :, self.pad_top:(self.shape_pad_in[1]-self.pad_bottom), self.pad_left:(self.shape_pad_in[2]-self.pad_right)] = self.parents[0].output
+
+        for fi in range(self.oshape[0]):  # For each filter
+            for y in range(self.oshape[1]):  # Walk output's height
+                in_y = y * self.strides[0]
+                for x in range(self.oshape[2]):  # Walk output's width
+                    in_x = x * self.strides[1]
+                    in_slice = self.in_fmap[:, :, in_y:in_y+self.kernel_size[0], in_x:in_x+self.kernel_size[1]]
+                    _map = in_slice * self.params['w1'][fi] + self.params['b1'][fi]
+                    _map = _map.reshape(_map.shape[0], -1)
+                    _red = np.sum(_map, axis=1)
+                    self.output[:, fi, y, x] = _red
+
+    def backward(self):
+        # Add padding to the delta, to simplify code
+        self.parents[0].delta = np.zeros_like(self.in_fmap)
+
+        for fi in range(self.oshape[0]):  # For each filter
+            for y in range(self.oshape[1]):  # Walk output's height
+                in_y = y * self.strides[0]
+                for x in range(self.oshape[2]):  # Walk output's width
+                    in_x = x * self.strides[1]
+
+                    # Add dL/dX (of window)
+                    a = self.delta[:, fi, y, x]
+                    b = self.params['w1'][fi]
+                    dx = np.outer(a, b).reshape((len(a), *b.shape))
+                    self.parents[0].delta[:, :, in_y:in_y+self.kernel_size[0], in_x:in_x+self.kernel_size[1]] += dx
+
+                    # Get X (of window)
+                    in_slice = self.in_fmap[:, :, in_y:in_y+self.kernel_size[0], in_x:in_x+self.kernel_size[1]]
+                    mean_dh = np.mean(a, axis=0)
+                    self.grads["w1"][fi] += mean_dh * np.mean(in_slice, axis=0)
+                    self.grads["b1"][fi] += mean_dh * 1.0
+
+        # Remove padding from delta
+        self.parents[0].delta = self.parents[0].delta[:, :, self.pad_top:(self.shape_pad_in[1]-self.pad_bottom), self.pad_left:(self.shape_pad_in[2]-self.pad_right)]
 
 
+class MaxPool(Layer):
+
+    def __init__(self, l_in, pool_size, strides=(1, 1), padding="same", name="MaxPool"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
+
+        # Check layer compatibility
+        if len(l_in.oshape) != 3:
+            raise ValueError(f"Expected a 3D layer ({self.name})")
+
+        # Params
+        self.parents.append(l_in)
+        self.pool_size = pool_size
+        self.strides = strides
+        self.padding = padding
+
+        # Compute sizes
+        _pads = utils.get_padding(padding, np.array(pool_size))
+        _oshape = utils.get_output(input_size=np.array(l_in.oshape), kernel_size=np.array(pool_size),
+                                   strides=np.array(strides), pads=_pads,
+                                   dilation_rate=np.array((1, 1)))
+        self.pads = tuple(_pads)
+        self.oshape = tuple(_oshape)
+
+    def forward(self):
+        pass
+
+    def backward(self):
+        pass
