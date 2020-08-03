@@ -41,7 +41,8 @@ def main():
     # Define architecture
     l_in = Input(shape=x_train[0].shape)
     l = l_in
-    l = Conv2D(l, filters=2, kernel_size=(5, 5), padding="same")
+    l = Conv2D(l, filters=2, kernel_size=(3, 3), padding="same")
+    l = MaxPool(l, pool_size=(2, 2))
     l = Reshape(l, shape=(-1))
     l_out = Softmax(Dense(l, num_classes))
 

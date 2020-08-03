@@ -42,23 +42,58 @@ def show_dataset(x, y, size=1, show_rnd=True):
 
 
 def get_padding(padding, input_size, kernel_size, strides):
-    # Important: This is a single padding sides.
-    # pad=1 => 1pad + 1pad, one on each side
-    _input_size = input_size[-2:]
+    # Important: This result includes one padding for each side
+    # pad=2 => 1pad + 1pad
+
+    # Convert to numpy
+    input_size = np.array(input_size)
+    kernel_size = np.array(kernel_size)
+    strides = np.array(strides)
 
     # Select mode
     padding = str(padding).lower()
     if padding in {"none", "valid"}:
         pads = np.zeros_like(kernel_size)
     elif padding in {"same", "zeros"}:
-        output_size = _input_size
-        pads = np.floor((strides*(output_size-1) + kernel_size - _input_size) / 2)
+        pads = np.zeros_like(kernel_size)
+
+        for i in range(len(pads)):
+            if input_size[i] % strides[i] == 0:
+                pads[i] = max(kernel_size[i] - strides[i], 0)
+            else:
+                pads[i] = max(kernel_size[i] - input_size[i] % strides[i], 0)
     else:
         raise ValueError("Unknown padding")
     return pads.astype(int)
 
 
-def get_output(input_size, kernel_size, strides, pads, dilation_rate):
-    _input_size = input_size[-2:]
-    output = np.floor((_input_size - kernel_size + 2*pads) / strides) + 1
+def get_padding_tblr(pads):
+    pad_height, pad_width = pads
+
+    # Specific paddings (leave more at the bottom/right
+    pad_top = pad_height // 2
+    pad_bottom = pad_height - pad_top
+    pad_left = pad_width // 2
+    pad_right = pad_width - pad_left
+
+    return pad_top, pad_bottom, pad_left, pad_right
+
+
+def get_output(input_size, kernel_size, strides, padding, dilation_rate=None):
+    # Convert to numpy
+    input_size = np.array(input_size)
+    kernel_size = np.array(kernel_size)
+    strides = np.array(strides)
+    dilation_rate = np.array(dilation_rate) if dilation_rate else np.ones_like(kernel_size)
+
+    if padding in {"none", "valid"}:
+        output = np.ceil((input_size - dilation_rate*(kernel_size - 1)) / strides)
+    elif padding in {"same", "zeros"}:
+        output = np.ceil(input_size/strides)
+    elif isinstance(padding, list) or isinstance(padding, tuple) or isinstance(padding, np.ndarray):
+        padding = np.array(padding)  # single padding
+        output = np.floor((input_size - kernel_size + 2 * padding) / strides) + 1  # Typical formula
+    else:
+        raise ValueError("Unknown padding")
+
     return output.astype(int)

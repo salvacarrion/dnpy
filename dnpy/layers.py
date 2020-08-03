@@ -416,20 +416,17 @@ class Conv2D(Layer):
         self.dilation_rate = dilation_rate
 
         # Compute sizes
-        _pads = utils.get_padding(padding=padding, input_size=np.array(l_in.oshape),
-                                  kernel_size=np.array(kernel_size), strides=np.array(strides))
-        _oshape = utils.get_output(input_size=np.array(l_in.oshape), kernel_size=np.array(kernel_size),
-                                   strides=np.array(strides), pads=_pads,
-                                   dilation_rate=np.array(dilation_rate))
+        # Note: First compute the output size, then the padding (ignore the typical formula)
+        _oshape = utils.get_output(input_size=l_in.oshape[1:], kernel_size=kernel_size,
+                                   strides=strides, padding=padding, dilation_rate=dilation_rate)
+        _pads = utils.get_padding(padding=padding, input_size=l_in.oshape[1:],
+                                  kernel_size=kernel_size, strides=strides)
         # Output / Pads size
-        self.pads = tuple(_pads*2)  # height, width
+        self.pads = tuple(_pads)  # height, width
         self.oshape = tuple([self.filters] + _oshape.tolist())
 
         # Specific pads
-        self.pad_top = self.pads[0]//2
-        self.pad_bottom = self.pads[0]-self.pad_top
-        self.pad_left = self.pads[1]//2
-        self.pad_right = self.pads[1]-self.pad_left
+        self.pad_top, self.pad_bottom, self.pad_left, self.pad_right = utils.get_padding_tblr(self.pads)
 
         # Params and grads
         channels = l_in.oshape[0]
@@ -516,7 +513,7 @@ class Conv2D(Layer):
 
 class MaxPool(Layer):
 
-    def __init__(self, l_in, pool_size, strides=(1, 1), padding="same", name="MaxPool"):
+    def __init__(self, l_in, pool_size, strides=(2, 2), padding="none", name="MaxPool"):
         super().__init__(name=name)
         self.parents.append(l_in)
 
@@ -531,15 +528,60 @@ class MaxPool(Layer):
         self.padding = padding
 
         # Compute sizes
-        _pads = utils.get_padding(padding, np.array(pool_size))
-        _oshape = utils.get_output(input_size=np.array(l_in.oshape), kernel_size=np.array(pool_size),
-                                   strides=np.array(strides), pads=_pads,
-                                   dilation_rate=np.array((1, 1)))
-        self.pads = tuple(_pads)
-        self.oshape = tuple(_oshape)
+        # Note: First compute the output size, then the padding (ignore the typical formula)
+        _oshape = utils.get_output(input_size=l_in.oshape[1:], kernel_size=pool_size,
+                                   strides=strides, padding=padding, dilation_rate=None)
+        _pads = utils.get_padding(padding=padding, input_size=l_in.oshape[1:],
+                                  kernel_size=pool_size, strides=strides)
+        # Output / Pads size
+        self.pads = tuple(_pads)  # height, width
+        self.oshape = tuple([l_in.oshape[0]] + _oshape.tolist())
+
+        # Specific pads
+        self.pad_top, self.pad_bottom, self.pad_left, self.pad_right = utils.get_padding_tblr(self.pads)
+
+        # Caches
+        self.max_idxs = []
+        self.output_idxs = None
+        self.idxs_Y = []
+        self.idxs_X = []
 
     def forward(self):
-        pass
+        m = self.parents[0].output.shape[0]  # Batches
+        self.output = np.zeros((m, *self.oshape))
+        self.output_idxs = np.zeros_like(self.output).astype(int)
+
+        # Reshape input adding paddings
+        self.shape_pad_in = tuple(np.array(self.parents[0].oshape) + np.array([0, *self.pads]))
+        self.in_fmap = np.zeros((m, *self.shape_pad_in))
+        self.in_fmap[:, :, self.pad_top:(self.shape_pad_in[1] - self.pad_bottom),
+        self.pad_left:(self.shape_pad_in[2] - self.pad_right)] = self.parents[0].output
+
+        # Cache indexes
+        for z in range(self.oshape[0]):  # For depth
+            for y in range(self.oshape[1]):  # Walk output's height
+                in_y = y * self.strides[0]
+                for x in range(self.oshape[2]):  # Walk output's width
+                    in_x = x * self.strides[1]
+                    in_slice = self.in_fmap[:, z, in_y:in_y + self.pool_size[0], in_x:in_x + self.pool_size[1]]
+                    in_slice = in_slice.reshape((len(in_slice), -1))
+                    self.output[:, z, y, x] = np.amax(in_slice, axis=1)
+                    self.output_idxs[:, z, y, x] = np.argmax(in_slice, axis=1)
 
     def backward(self):
-        pass
+        # Add padding to the delta, to simplify code
+        self.parents[0].delta = np.zeros_like(self.in_fmap)
+
+        for z in range(self.oshape[0]):  # For depth
+            for y in range(self.oshape[1]):  # Walk output's height
+                in_y = y * self.strides[0]
+                for x in range(self.oshape[2]):  # Walk output's width
+                    in_x = x * self.strides[1]
+
+                    self.parents[0].delta[:, z, in_y:in_y + self.pool_size[0], in_x:in_x + self.pool_size[1]].flat[self.output_idxs[:, z, y, x]] = self.delta[:, z, y, x]
+
+        # Remove padding from delta
+        self.parents[0].delta = self.parents[0].delta[:, :, self.pad_top:(self.shape_pad_in[1] - self.pad_bottom),
+                                self.pad_left:(self.shape_pad_in[2] - self.pad_right)]
+
+
