@@ -29,27 +29,77 @@ class TestStringMethods(unittest.TestCase):
         r6 = utils.get_output(input_size=(5, 5), kernel_size=(3, 3), strides=(2, 2), padding=(1, 1))
         self.assertTrue(np.all(r6 == np.array((3, 3))))
 
-    def test_maxpool(self):
+    def test_maxpool_2x2_none(self):
         # Test 1
         t1_in_img = np.array([[
-            [12, 20, 30, 0],
-            [8, 12, 2, 0],
-            [34, 70, 37, 4],
-            [112, 100, 25, 12],
+            [0, 1, 0, 4, 5],
+            [2, 3, 2, 1, 3],
+            [4, 4, 0, 4, 3],
+            [2, 5, 2, 6, 4],
+            [1, 0, 0, 5, 7],
         ]])
         t1_ref_img = np.array([[
-            [20, 30],
-            [112, 37]
+            [3, 4],
+            [5, 6],
+        ]])
+
+        t1_ref_back = np.array([[
+            [0, 0, 0, 1, 0],
+            [0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 1, 0, 1, 0],
+            [0, 0, 0, 0, 0],
         ]])
 
         # Test 1
-        l_in = Input(shape=t1_in_img.shape)
-        l_in.output = t1_in_img
-        l1 = MaxPool(l_in, pool_size=(2, 2), strides=(2, 2), padding="none")
+        # Forward
+        l0 = Input(shape=t1_in_img.shape)
+        l0.output = t1_in_img
+        l1 = MaxPool(l0, pool_size=(2, 2), strides=(2, 2), padding="none")
         l1.forward()
         self.assertTrue(np.all(t1_ref_img == l1.output))
 
-        dfas = 3
+        # Backward
+        l1.delta = np.ones((1, *t1_ref_img.shape))
+        l1.backward()
+        self.assertTrue(np.all(t1_ref_back == l0.delta))
+
+    def test_maxpool_2x2_same(self):
+        # Test 1
+        t1_in_img = np.array([[
+            [0, 1, 0, 4, 5],
+            [2, 3, 2, 1, 3],
+            [4, 4, 0, 4, 3],
+            [2, 5, 2, 6, 4],
+            [1, 0, 0, 5, 7],
+        ]])
+        t1_ref_img = np.array([[
+            [3, 4, 5],
+            [5, 6, 4],
+            [1, 5, 7],
+        ]])
+
+        t1_ref_back = np.array([[
+            [0, 0, 0, 1, 1],
+            [0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 1, 0, 1, 1],
+            [1, 0, 0, 1, 1],
+        ]])
+
+
+        # Test 1
+        # Forward
+        l0 = Input(shape=t1_in_img.shape)
+        l0.output = t1_in_img
+        l1 = MaxPool(l0, pool_size=(2, 2), strides=(2, 2), padding="same")
+        l1.forward()
+        self.assertTrue(np.all(t1_ref_img == l1.output))
+
+        # Backward
+        l1.delta = np.ones((1, *t1_ref_img.shape))
+        l1.backward()
+        self.assertTrue(np.all(t1_ref_back == l0.delta))
 
 
 if __name__ == "__main__":
