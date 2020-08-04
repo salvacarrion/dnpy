@@ -56,7 +56,7 @@ def main():
     )
 
     # Print model
-    mymodel.summary(batch_size=batch_size)
+    mymodel.summary()
 
     # Train
     mymodel.fit([x_train], [y_train],

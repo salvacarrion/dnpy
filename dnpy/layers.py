@@ -424,13 +424,13 @@ class Conv2D(Layer):
                  kernel_initializer=None, bias_initializer=None,
                  kernel_regularizer=None, bias_regularizer=None, name="Conv2D"):
         super().__init__(name=name)
+        self.parents.append(l_in)
 
         # Check layer compatibility
         if len(l_in.oshape) != 3:
             raise ValueError(f"Expected a 3D layer ({self.name})")
 
         # Params
-        self.parents.append(l_in)
         self.filters = filters
         self.kernel_size = kernel_size
         self.strides = strides
@@ -559,7 +559,6 @@ class MaxPool(Layer):
             raise ValueError(f"Expected a 3D layer ({self.name})")
 
         # Params
-        self.parents.append(l_in)
         self.pool_size = pool_size
         self.strides = strides
         self.padding = padding
@@ -633,7 +632,6 @@ class AvgPool(Layer):
             raise ValueError(f"Expected a 3D layer ({self.name})")
 
         # Params
-        self.parents.append(l_in)
         self.pool_size = pool_size
         self.strides = strides
         self.padding = padding
@@ -697,3 +695,15 @@ class AvgPool(Layer):
                                 self.pad_left:(self.shape_pad_in[2] - self.pad_right)]
 
 
+class GlobalMaxPool(MaxPool):
+
+    def __init__(self, l_in, name="GlobalMaxPool"):
+        pool_size = l_in.oshape[1:]
+        super().__init__(l_in, pool_size=pool_size, strides=(1, 1), padding="none", name=name)
+
+
+class GlobalAvgPool(AvgPool):
+
+    def __init__(self, l_in, name="GlobalAvgPool"):
+        pool_size = l_in.oshape[1:]
+        super().__init__(l_in, pool_size=pool_size, strides=(1, 1), padding="none", name=name)

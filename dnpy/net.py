@@ -355,35 +355,16 @@ class Net:
             metrics.append(metrics_l_out)
         return metrics
 
-    def summary(self, batch_size=1):
+    def summary(self):
         print('==================================')
         print("Model summary")
         print('==================================')
 
-        # Set mode
-        previous_mode = self.mode
-        self.set_mode('test')
-
-        # Feed random input to input layers
-        x_train_mb = []
-        for i in range(len(self.l_in)):
-            x = np.random.random([batch_size, *self.l_in[i].oshape])
-            x_train_mb.append(x)
-
-        # Feed network
-        self.feed_input(x_train_mb)
-
-        # Forward
-        self.forward()
-
         for i, l in enumerate(self.fts_layers):
             ishapes = []
             for l_in in l.parents:
-                ishapes.append(l_in.output.shape)
-            ishapes = ishapes if len(ishapes) > 1 else l.output.shape  # other / input
-            print(f"#{i+1}:\t{l.name}\t\t-\t{ishapes}\t=>\t{l.output.shape}")
+                ishapes.append(l_in.oshape)
+            ishapes = ishapes if len(ishapes) > 1 else l.oshape  # other / input
+            print(f"#{i+1}:\t{l.name}\t\t-\t{ishapes}\t=>\t{l.oshape}")
 
         print('')
-
-        # Set previous mode
-        self.set_mode(previous_mode)

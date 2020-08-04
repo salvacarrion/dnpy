@@ -41,12 +41,14 @@ def main():
     # Define architecture
     l_in = Input(shape=x_train[0].shape)
     l = l_in
-    l = Conv2D(l, filters=2, kernel_size=(3, 3), padding="same")
-    l = AvgPool(l, pool_size=(2, 2), strides=(2, 2))
+    l = Conv2D(l, filters=32, kernel_size=(3, 3), strides=(1, 1), padding="same")
+    l = MaxPool(l, pool_size=(3, 3), strides=(2, 2), padding="same")
     l = Relu(l)
-    l = Conv2D(l, filters=4, kernel_size=(3, 3), padding="none", kernel_regularizer=L2(lmda=0.01), bias_regularizer=L1(lmda=0.01))
-    l = AvgPool(l, pool_size=(2, 2), strides=(2, 2))
+
+    l = Conv2D(l, filters=64, kernel_size=(3, 3), strides=(1, 1), padding="same")
+    l = MaxPool(l, pool_size=(3, 3), strides=(2, 2), padding="none")
     l = Relu(l)
+
     l = Reshape(l, shape=(-1))
     # l = Dense(l, units=-1)
     # l = Relu(l)
@@ -57,7 +59,7 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        optimizer=Adam(lr=0.001),
+        optimizer=Adam(lr=0.01),
         losses=[losses.CrossEntropy()],
         metrics=[[metrics.CategoricalAccuracy()]],
         debug=False,
@@ -65,7 +67,7 @@ def main():
     )
 
     # Print model
-    mymodel.summary(batch_size=batch_size)
+    mymodel.summary()
 
     # Train
     mymodel.fit([x_train], [y_train],
