@@ -351,6 +351,89 @@ class TestStringMethods(unittest.TestCase):
         l1.backward()
         self.assertTrue(np.all(t1_ref_back == l0.delta))
 
+    def test_avgpool_2x2_none(self):
+        # Test 1
+        t1_in_img = np.array([[
+            [
+                [0, 1, 0, 4, 5],
+                [2, 3, 2, 1, 3],
+                [4, 4, 0, 4, 3],
+                [2, 5, 2, 6, 4],
+                [1, 0, 0, 5, 7],
+            ]
+        ]])
+        t1_ref_img = np.array([[
+            [
+            [1.5, 1.75],
+            [3.75, 3.0],
+            ]
+        ]])
+
+        t1_ref_back = np.array([[
+            [
+             [0.25000, 0.25000, 0.25000, 0.25000, 0.00000],
+             [0.25000, 0.25000, 0.25000, 0.25000, 0.00000],
+             [0.25000, 0.25000, 0.25000, 0.25000, 0.00000],
+             [0.25000, 0.25000, 0.25000, 0.25000, 0.00000],
+             [0.00000, 0.00000, 0.00000, 0.00000, 0.00000],
+            ]
+        ]])
+
+        # Test 1
+        # Forward
+        l0 = Input(shape=t1_in_img[0].shape)
+        l0.output = t1_in_img
+        l1 = AvgPool(l0, pool_size=(2, 2), strides=(2, 2), padding="none")
+        l1.forward()
+        self.assertTrue(np.all(t1_ref_img == l1.output))
+
+        # Backward
+        l1.delta = np.ones_like(t1_ref_img)
+        l1.backward()
+        self.assertTrue(np.all(t1_ref_back == l0.delta))
+
+    def test_avgpool_2x2_same(self):
+        # Test 1
+        t1_in_img = np.array([[
+            [
+                [0, 1, 0, 4, 5],
+                [2, 3, 2, 1, 3],
+                [4, 4, 0, 4, 3],
+                [2, 5, 2, 6, 4],
+                [1, 0, 0, 5, 7],
+            ]
+        ]])
+        t1_ref_img = np.array([[
+            [
+                [1.5, 1.75, 2.0],
+                [3.75, 3.0, 1.75],
+                [0.25, 1.25, 1.75],
+            ]
+        ]])
+
+        t1_ref_back = np.array([[
+            [
+                [0.25, 0.25, 0.25, 0.25, 0.25],
+                [0.25, 0.25, 0.25, 0.25, 0.25],
+                [0.25, 0.25, 0.25, 0.25, 0.25],
+                [0.25, 0.25, 0.25, 0.25, 0.25],
+                [0.25, 0.25, 0.25, 0.25, 0.25],
+            ]
+        ]])
+
+        # Test 1
+        # Forward
+        l0 = Input(shape=t1_in_img[0].shape)
+        l0.output = t1_in_img
+        l1 = AvgPool(l0, pool_size=(2, 2), strides=(2, 2), padding="same")
+        l1.forward()
+        self.assertTrue(np.all(t1_ref_img == l1.output))
+
+        # Backward
+        l1.delta = np.ones_like(t1_ref_img)
+        l1.backward()
+        self.assertTrue(np.all(t1_ref_back == l0.delta))
+
 
 if __name__ == "__main__":
     unittest.main()

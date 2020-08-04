@@ -42,14 +42,14 @@ def main():
     l_in = Input(shape=x_train[0].shape)
     l = l_in
     l = Conv2D(l, filters=2, kernel_size=(3, 3), padding="same")
-    l = MaxPool(l, pool_size=(2, 2), strides=(2, 2))
+    l = AvgPool(l, pool_size=(2, 2), strides=(2, 2))
     l = Relu(l)
     l = Conv2D(l, filters=4, kernel_size=(3, 3), padding="none", kernel_regularizer=L2(lmda=0.01), bias_regularizer=L1(lmda=0.01))
-    l = MaxPool(l, pool_size=(2, 2), strides=(2, 2))
+    l = AvgPool(l, pool_size=(2, 2), strides=(2, 2))
     l = Relu(l)
     l = Reshape(l, shape=(-1))
-    l = Dense(l, units=-1)
-    l = Relu(l)
+    # l = Dense(l, units=-1)
+    # l = Relu(l)
     l_out = Softmax(Dense(l, num_classes))
 
     # Build network
