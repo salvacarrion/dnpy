@@ -79,6 +79,15 @@ class Dense(Layer):
                  kernel_regularizer=None, bias_regularizer=None, name="Dense"):
         super().__init__(name=name)
         self.parents.append(l_in)
+
+        # Check layer compatibility
+        if len(l_in.oshape) != 1:
+            raise ValueError(f"Expected a 1D layer ({self.name})")
+
+        # Tricky
+        if units == -1:
+            units = l_in.oshape[0]
+
         self.oshape = (units,)
         self.units = units
 
@@ -189,6 +198,11 @@ class Softmax(Layer):
     def __init__(self, l_in, stable=True, name="Softmax"):
         super().__init__(name=name)
         self.parents.append(l_in)
+
+        # Check layer compatibility
+        if len(l_in.oshape) != 1:
+            raise ValueError(f"Expected a 1D layer ({self.name})")
+
         self.oshape = self.parents[0].oshape
 
         self.stable = stable
@@ -427,7 +441,7 @@ class Conv2D(Layer):
         # Note: First compute the output size, then the padding (ignore the typical formula)
         _oshape = utils.get_output(input_size=l_in.oshape[1:], kernel_size=kernel_size,
                                    strides=strides, padding=padding, dilation_rate=dilation_rate)
-        _pads = utils.get_padding(padding=padding, input_size=l_in.oshape[1:],
+        _pads = utils.get_padding(padding=padding, input_size=l_in.oshape[1:], output_size=_oshape[1:],
                                   kernel_size=kernel_size, strides=strides)
         # Output / Pads size
         self.pads = tuple(_pads)  # height, width
@@ -509,16 +523,26 @@ class Conv2D(Layer):
                     in_x = x * self.strides[1]
 
                     # Add dL/dX (of window)
-                    a = self.delta[:, fi, y, x]
-                    b = self.params['w1'][fi]
-                    dx = np.outer(a, b).reshape((len(a), *b.shape))
+                    dhi = self.delta[:, fi, y, x]
+                    w1_fi = self.params['w1'][fi]
+                    dx = np.outer(dhi, w1_fi).reshape((len(dhi), *w1_fi.shape))
                     self.parents[0].delta[:, :, in_y:in_y+self.kernel_size[0], in_x:in_x+self.kernel_size[1]] += dx
 
                     # Get X (of window)
                     in_slice = self.in_fmap[:, :, in_y:in_y+self.kernel_size[0], in_x:in_x+self.kernel_size[1]]
-                    mean_dh = np.mean(a, axis=0)
-                    self.grads["w1"][fi] += mean_dh * np.mean(in_slice, axis=0)
-                    self.grads["b1"][fi] += mean_dh * 1.0
+
+                    # Compute gradients
+                    g_w1 = np.mean(dhi.reshape((len(dhi), 1)) * in_slice.reshape((len(in_slice), -1)), axis=0).reshape(in_slice.shape[1:])
+                    g_b1 = np.mean(dhi, axis=0)  #* 1.0
+
+                    # Add regularizers (if needed)
+                    if self.kernel_regularizer:
+                        g_w1 += self.kernel_regularizer.backward(self.params['w1'][fi])
+                    if self.bias_regularizer:
+                        g_b1 += self.bias_regularizer.backward(self.params['b1'][fi])
+
+                    self.grads["w1"][fi] += g_w1
+                    self.grads["b1"][fi] += g_b1
 
         # Remove padding from delta
         self.parents[0].delta = self.parents[0].delta[:, :, self.pad_top:(self.shape_pad_in[1]-self.pad_bottom), self.pad_left:(self.shape_pad_in[2]-self.pad_right)]
@@ -544,7 +568,7 @@ class MaxPool(Layer):
         # Note: First compute the output size, then the padding (ignore the typical formula)
         _oshape = utils.get_output(input_size=l_in.oshape[1:], kernel_size=pool_size,
                                    strides=strides, padding=padding, dilation_rate=None)
-        _pads = utils.get_padding(padding=padding, input_size=l_in.oshape[1:],
+        _pads = utils.get_padding(padding=padding, input_size=l_in.oshape[1:], output_size=_oshape[1:],
                                   kernel_size=pool_size, strides=strides)
         # Output / Pads size
         self.pads = tuple(_pads)  # height, width

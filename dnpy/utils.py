@@ -41,12 +41,12 @@ def show_dataset(x, y, size=1, show_rnd=True):
         plt.show()
 
 
-def get_padding(padding, input_size, kernel_size, strides):
-    # Important: This result includes one padding for each side
-    # pad=2 => 1pad + 1pad
+def get_padding(padding, input_size, output_size, kernel_size, strides):
+    # Note: Padding along height/width
 
     # Convert to numpy
     input_size = np.array(input_size)
+    output_size = np.array(output_size)
     kernel_size = np.array(kernel_size)
     strides = np.array(strides)
 
@@ -55,13 +55,14 @@ def get_padding(padding, input_size, kernel_size, strides):
     if padding in {"none", "valid"}:
         pads = np.zeros_like(kernel_size)
     elif padding in {"same", "zeros"}:
-        pads = np.zeros_like(kernel_size)
-
-        for i in range(len(pads)):
-            if input_size[i] % strides[i] == 0:
-                pads[i] = max(kernel_size[i] - strides[i], 0)
-            else:
-                pads[i] = max(kernel_size[i] - input_size[i] % strides[i], 0)
+        pads = np.ceil((strides*(output_size-1)-input_size+kernel_size) )  # along axis
+        # pads2 = np.zeros_like(kernel_size)
+        # for i in range(len(pads2)):
+        #     if input_size[i] % strides[i] == 0:
+        #         pads2[i] = max(kernel_size[i] - strides[i], 0)
+        #     else:
+        #         pads2[i] = max(kernel_size[i] - (input_size[i] % strides[i]), 0)
+        # assert np.all(pads == pads2)
     else:
         raise ValueError("Unknown padding")
     return pads.astype(int)
