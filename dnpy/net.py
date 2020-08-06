@@ -154,6 +154,7 @@ class Net:
         check_datasets(x_train, y_train, x_test, y_test)
 
         # Get basic data
+        batch_size = int(batch_size)
         num_samples = len(x_train[0])
         num_batches = int(num_samples/batch_size)
 

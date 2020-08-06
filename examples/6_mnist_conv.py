@@ -41,11 +41,11 @@ def main():
     # Define architecture
     l_in = Input(shape=x_train[0].shape)
     l = l_in
-    l = Conv2D(l, filters=32, kernel_size=(3, 3), strides=(1, 1), padding="same")
-    l = MaxPool(l, pool_size=(3, 3), strides=(2, 2), padding="same")
+    l = Conv2D(l, filters=2, kernel_size=(3, 3), strides=(1, 1), padding="none")
+    l = MaxPool(l, pool_size=(3, 3), strides=(2, 2), padding="none")
     l = Relu(l)
 
-    l = Conv2D(l, filters=64, kernel_size=(3, 3), strides=(1, 1), padding="same")
+    l = Conv2D(l, filters=4, kernel_size=(3, 3), strides=(1, 1), padding="same")
     l = MaxPool(l, pool_size=(3, 3), strides=(2, 2), padding="none")
     l = Relu(l)
 

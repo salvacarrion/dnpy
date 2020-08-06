@@ -9,13 +9,13 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - Core:
         - Input
         - Dense
-        - Reshape
+        - Reshape / Flatten
         - Activations:
             - Relu
             - Sigmoid
             - Tanh
             - Softmax
-        - Embedding => Pending...
+        - Embedding
     - Regularization:
         - BathNorm
         - Dropout

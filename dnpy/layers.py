@@ -383,6 +383,12 @@ class Reshape(Layer):
         self.parents[0].delta = np.reshape(self.delta, newshape=new_shape)
 
 
+class Flatten(Reshape):
+
+    def __init__(self, l_in, name="Flatten"):
+        super().__init__(l_in, shape=(-1,), name=name)
+
+
 class Add(Layer):
 
     def __init__(self, l_in, name="Add"):
@@ -577,10 +583,7 @@ class MaxPool(Layer):
         self.pad_top, self.pad_bottom, self.pad_left, self.pad_right = utils.get_padding_tblr(self.pads)
 
         # Caches
-        self.max_idxs = []
         self.output_idxs = None
-        self.idxs_Y = []
-        self.idxs_X = []
 
     def forward(self):
         m = self.parents[0].output.shape[0]  # Batches
@@ -649,12 +652,6 @@ class AvgPool(Layer):
         # Specific pads
         self.pad_top, self.pad_bottom, self.pad_left, self.pad_right = utils.get_padding_tblr(self.pads)
 
-        # Caches
-        self.max_idxs = []
-        self.output_idxs = None
-        self.idxs_Y = []
-        self.idxs_X = []
-
     def forward(self):
         m = self.parents[0].output.shape[0]  # Batches
         self.output = np.zeros((m, *self.oshape))
@@ -707,3 +704,48 @@ class GlobalAvgPool(AvgPool):
     def __init__(self, l_in, name="GlobalAvgPool"):
         pool_size = l_in.oshape[1:]
         super().__init__(l_in, pool_size=pool_size, strides=(1, 1), padding="none", name=name)
+
+
+class Embedding(Layer):
+    """
+    input_dim: vocabulary size
+    output_dim: embedding latent space
+    input_length: length of each sentence
+    """
+    def __init__(self, l_in, input_dim, output_dim, input_length, embeddings_initializer=None, embeddings_regularizer=None, name="Embedding"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
+
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.oshape = (input_length, output_dim)
+
+        # Params and grads
+        self.params = {'w1': np.zeros((input_dim, output_dim))}
+        self.grads = {'w1': np.zeros_like(self.params['w1'])}
+
+        # Initialization: param
+        if embeddings_initializer is None:
+            self.embeddings_initializer = initializers.RandomUniform()
+        else:
+            self.embeddings_initializer = embeddings_initializer
+
+        # Add regularizers
+        self.embeddings_regularizer = embeddings_regularizer
+
+    def initialize(self, optimizer=None):
+        super().initialize(optimizer=optimizer)
+
+        # Initialize params
+        self.embeddings_initializer.apply(self.params, ['w1'])
+
+    def forward(self):
+        # Get embeddings corresponding to word indices (for each sample)
+        word_indices = self.parents[0].output
+        sentence = self.params['w1'][word_indices]
+        self.output = sentence  # (batch_size, input_length, self.output_dim)
+
+    def backward(self):
+        # Update embeddings corresponding to word indices
+        word_indices = self.parents[0].output
+        self.grads['w1'][word_indices] += np.mean(self.delta, axis=0)
