@@ -188,13 +188,13 @@ class DepthwiseConv2D(Conv):
     def __init__(self, l_in, kernel_size, strides=(1, 1), padding="same",
                  dilation_rate=(1, 1), depth_multiplier=1,
                  kernel_initializer=None, bias_initializer=None,
-                 kernel_regularizer=None, bias_regularizer=None, name="Conv2D"):
+                 kernel_regularizer=None, bias_regularizer=None, name="DepthwiseConv2D"):
 
         # Check layer compatibility
         if len(l_in.oshape) != 3:
             raise ValueError(f"Expected a 3D layer ({self.name})")
 
-        filters = 3
+        filters = l_in.oshape[0]
         self.depth_multiplier = int(depth_multiplier)
 
         super().__init__(l_in, filters=filters, kernel_size=kernel_size, strides=strides,

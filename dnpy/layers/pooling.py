@@ -4,7 +4,6 @@ from dnpy.layers import Layer
 from dnpy import initializers, utils
 
 
-
 class Pool(Layer):
 
     def __init__(self, l_in, pool_size, strides, padding, name="Pool"):
@@ -109,7 +108,7 @@ class GlobalMaxPool(MaxPool):
 
 class AvgPool(Pool):
 
-    def __init__(self, l_in, pool_size, strides=(2, 2), padding="none", name="MaxPool"):
+    def __init__(self, l_in, pool_size, strides=(2, 2), padding="none", name="AvgPool"):
         super().__init__(l_in, pool_size=pool_size, strides=strides,
                          padding=padding, name=name)
 
