@@ -41,6 +41,11 @@ def show_dataset(x, y, size=1, show_rnd=True):
         plt.show()
 
 
+def show_img(img):
+    plt.imshow(img)
+    plt.show()
+
+
 def get_padding(padding, input_size, output_size, kernel_size, strides):
     # Note: Padding along height/width
 

@@ -46,14 +46,15 @@ class Conv2D(Layer):
 
         # Initialization: param
         if kernel_initializer is None:
-            # There are "num input feature maps * filter height * filter width" inputs to each hidden unit
-            out_fm, in_fm, f_height, f_width = self.params['w1'].shape
-            fan_in = in_fm*f_height*f_width
-
-            #  Each unit in the lower layer receives a gradient from:
-            #  "num output feature maps * filter height * filter width" / pooling size
-            fan_out = out_fm*f_height*f_width
-            self.kernel_initializer = initializers.HeNormal(fan_in=fan_in, fan_out=fan_out)
+            # # There are "num input feature maps * filter height * filter width" inputs to each hidden unit
+            # out_fm, in_fm, f_height, f_width = self.params['w1'].shape
+            # fan_in = in_fm*f_height*f_width
+            #
+            # #  Each unit in the lower layer receives a gradient from:
+            # #  "num output feature maps * filter height * filter width" / pooling size
+            # fan_out = out_fm*f_height*f_width
+            # self.kernel_initializer = initializers.HeNormal(fan_in=fan_in, fan_out=fan_out)
+            self.kernel_initializer = initializers.RandomUniform()
         else:
             self.kernel_initializer = kernel_initializer
 
@@ -88,15 +89,14 @@ class Conv2D(Layer):
         self.in_fmap = np.zeros((m, *self.shape_pad_in))
         self.in_fmap[:, :, self.pad_top:(self.shape_pad_in[1]-self.pad_bottom), self.pad_left:(self.shape_pad_in[2]-self.pad_right)] = self.parents[0].output
 
-        for fi in range(self.oshape[0]):  # For each filter
+        for fi in range(self.oshape[0]):  # For each filter (independent of the image)
             for y in range(self.oshape[1]):  # Walk output's height
                 in_y = y * self.strides[0]
                 for x in range(self.oshape[2]):  # Walk output's width
                     in_x = x * self.strides[1]
                     in_slice = self.in_fmap[:, :, in_y:in_y+self.kernel_size[0], in_x:in_x+self.kernel_size[1]]
                     _map = in_slice * self.params['w1'][fi] + self.params['b1'][fi]
-                    _map = _map.reshape(_map.shape[0], -1)
-                    _red = np.sum(_map, axis=1)
+                    _red = np.sum(_map, axis=(1, 2, 3))
                     self.output[:, fi, y, x] = _red
 
     def backward(self):
@@ -119,7 +119,7 @@ class Conv2D(Layer):
                     in_slice = self.in_fmap[:, :, in_y:in_y+self.kernel_size[0], in_x:in_x+self.kernel_size[1]]
 
                     # Compute gradients
-                    g_w1 = np.mean(dhi.reshape((len(dhi), 1)) * in_slice.reshape((len(in_slice), -1)), axis=0).reshape(in_slice.shape[1:])
+                    g_w1 = np.mean(np.expand_dims(dhi, axis=(1, 2, 3)) * in_slice, axis=0)
                     g_b1 = np.mean(dhi, axis=0)  #* 1.0
 
                     # Add regularizers (if needed)
@@ -181,21 +181,22 @@ class DepthwiseConv2D(Layer):
         self.pad_top, self.pad_bottom, self.pad_left, self.pad_right = utils.get_padding_tblr(self.pads)
 
         # Params and grads
-        self.params = {'w1': np.zeros((channels, *self.kernel_size)),
+        self.params = {'w1': np.zeros((1, channels, *self.kernel_size)),
                        'b1': np.zeros((channels,))}  # One filter per channel
         self.grads = {'w1': np.zeros_like(self.params['w1']),
                       'b1': np.zeros_like(self.params['b1'])}
 
         # Initialization: param
         if kernel_initializer is None:
-            # There are "num input feature maps * filter height * filter width" inputs to each hidden unit
-            out_fm, in_fm, f_height, f_width = self.params['w1'].shape
-            fan_in = in_fm*f_height*f_width
-
-            #  Each unit in the lower layer receives a gradient from:
-            #  "num output feature maps * filter height * filter width" / pooling size
-            fan_out = out_fm*f_height*f_width
-            self.kernel_initializer = initializers.HeNormal(fan_in=fan_in, fan_out=fan_out)
+            # # There are "num input feature maps * filter height * filter width" inputs to each hidden unit
+            # out_fm, in_fm, f_height, f_width = self.params['w1'].shape
+            # fan_in = in_fm*f_height*f_width
+            #
+            # #  Each unit in the lower layer receives a gradient from:
+            # #  "num output feature maps * filter height * filter width" / pooling size
+            # fan_out = out_fm*f_height*f_width
+            # self.kernel_initializer = initializers.HeNormal(fan_in=fan_in, fan_out=fan_out)
+            self.kernel_initializer = initializers.RandomUniform()
         else:
             self.kernel_initializer = kernel_initializer
 
@@ -250,14 +251,14 @@ class DepthwiseConv2D(Layer):
 
                 # Add dL/dX (of window)
                 dhi = self.delta[:, :, y, x]
-                dx = dhi * self.params['w1']
+                dx = np.expand_dims(dhi, axis=(2, 3)) * self.params['w1']
                 self.parents[0].delta[:, :, in_y:in_y+self.kernel_size[0], in_x:in_x+self.kernel_size[1]] += dx
 
                 # Get X (of window)
                 in_slice = self.in_fmap[:, :, in_y:in_y+self.kernel_size[0], in_x:in_x+self.kernel_size[1]]
 
                 # Compute gradients
-                g_w1 = np.mean(dhi * in_slice, axis=0)
+                g_w1 = np.mean(np.expand_dims(dhi, axis=(2, 3)) * in_slice, axis=0)
                 g_b1 = np.mean(dhi, axis=0)  #* 1.0
 
                 # Add regularizers (if needed)

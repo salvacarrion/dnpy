@@ -233,6 +233,8 @@ class TestStringMethods(unittest.TestCase):
                 [1, 0, 0, 5, 7],
             ]
         ]])
+        t1_in_img = np.concatenate([t1_in_img, t1_in_img*10, t1_in_img*100], axis=1)
+
         t1_ref_img = np.array([[
             [
             [6, 8, 11, 15, 13],
@@ -242,6 +244,7 @@ class TestStringMethods(unittest.TestCase):
             [8, 10, 18, 24, 22],
             ]
         ]])
+        t1_ref_img = t1_ref_img + t1_ref_img*10 + t1_ref_img*100
 
         t1_ref_back = np.array([[
             [
@@ -252,6 +255,7 @@ class TestStringMethods(unittest.TestCase):
             [4, 6, 6, 6, 4],
             ]
         ]])
+        t1_ref_back = np.concatenate([t1_ref_back, t1_ref_back, t1_ref_back], axis=1)
 
         # Test 1
         # Forward

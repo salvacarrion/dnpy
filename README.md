@@ -27,8 +27,8 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - Convolutions:
         - Conv2D
         - TransposedConv => Pending... 
-        - DepthwiseSeparableConv
-        - PointwiseSeparableConv
+        - DepthwiseConv2D
+        - PointwiseConv2D
         - SpatialSeparableConv* => Pending... 
     - Poolings:
         - MaxPool
