@@ -268,6 +268,56 @@ class TestStringMethods(unittest.TestCase):
         l1.backward()
         self.assertTrue(np.all(t1_ref_back == l0.delta))
 
+    def test_depthwiseconv2d_3x3_same(self):
+        # Test 1
+        t1_in_img = np.array([[
+            [
+                [0, 1, 0, 4, 5],
+                [2, 3, 2, 1, 3],
+                [4, 4, 0, 4, 3],
+                [2, 5, 2, 6, 4],
+                [1, 0, 0, 5, 7],
+            ]
+        ]])
+        t1_in_img = np.concatenate([t1_in_img, t1_in_img*10, t1_in_img*100], axis=1)
+
+        t1_ref_img = np.array([[
+            [
+            [6, 8, 11, 15, 13],
+            [14, 16, 19, 22, 20],
+            [20, 24, 27, 25, 21],
+            [16, 18, 26, 31, 29],
+            [8, 10, 18, 24, 22],
+            ]
+        ]])
+        t1_ref_img = np.concatenate([t1_ref_img, t1_ref_img*10, t1_ref_img*100], axis=1)
+
+        t1_ref_back = np.array([[
+            [
+            [4, 6, 6, 6, 4],
+            [6, 9, 9, 9, 6],
+            [6, 9, 9, 9, 6],
+            [6, 9, 9, 9, 6],
+            [4, 6, 6, 6, 4],
+            ]
+        ]])
+        t1_ref_back = np.concatenate([t1_ref_back, t1_ref_back, t1_ref_back], axis=1)
+
+        # Test 1
+        # Forward
+        l0 = Input(shape=t1_in_img[0].shape)
+        l0.output = t1_in_img
+        l1 = DepthwiseConv2D(l0, kernel_size=(3, 3), strides=(1, 1), padding="same",
+                    kernel_initializer=initializers.Constant(fill_value=1))
+        l1.initialize()
+        l1.forward()
+        self.assertTrue(np.all(t1_ref_img == l1.output))
+
+        # Backward
+        l1.delta = np.ones_like(t1_ref_img)
+        l1.backward()
+        self.assertTrue(np.all(t1_ref_back == l0.delta))
+
     def test_maxpool_2x2_none(self):
         # Test 1
         t1_in_img = np.array([[
