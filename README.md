@@ -12,6 +12,7 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
         - Reshape / Flatten
         - Activations:
             - Relu
+            - LeakyRelu
             - Sigmoid
             - Tanh
             - Softmax

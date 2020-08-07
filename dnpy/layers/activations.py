@@ -4,22 +4,28 @@ from dnpy.layers import Layer
 from dnpy import initializers, utils
 
 
-class Relu(Layer):
+class LeakyRelu(Layer):
 
-    def __init__(self, l_in, name="Relu"):
+    def __init__(self, l_in, alpha=0.3, name="LeakyRelu"):
         super().__init__(name=name)
         self.parents.append(l_in)
 
+        self.alpha = alpha
         self.oshape = self.parents[0].oshape
         self.gate = None
 
     def forward(self):
-        self.gate = (self.parents[0].output > 0).astype(float)
-        self.output = self.gate * self.parents[0].output
+        self.gate = (self.parents[0].output > 0)
+        self.output = np.where(self.gate, self.parents[0].output, self.parents[0].output * self.alpha)
 
     def backward(self):
-        # Each layer sets the delta of their parent (m,13)=>(m, 10)=>(m, 1)=>(1,1)
-        self.parents[0].delta = self.gate * self.delta
+        self.parents[0].delta = np.where(self.gate, self.delta, self.delta * self.alpha)
+
+
+class Relu(LeakyRelu):
+
+    def __init__(self, l_in, name="Relu"):
+        super().__init__(l_in, alpha=0.0, name=name)
 
 
 class Sigmoid(Layer):
