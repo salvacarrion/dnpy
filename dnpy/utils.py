@@ -73,16 +73,16 @@ def get_padding(padding, input_size, output_size, kernel_size, strides):
     return pads.astype(int)
 
 
-def get_padding_tblr(pads):
-    pad_height, pad_width = pads
+def get_side_paddings(pads):
+    side_pads = []
 
-    # Specific paddings (leave more at the bottom/right
-    pad_top = pad_height // 2
-    pad_bottom = pad_height - pad_top
-    pad_left = pad_width // 2
-    pad_right = pad_width - pad_left
+    # Specific paddings (leave more at the bottom/right)
+    for p in pads:
+        pad1 = p // 2
+        pad2 = p - pad1
+        side_pads.append((pad1, pad2))
 
-    return pad_top, pad_bottom, pad_left, pad_right
+    return tuple(side_pads)
 
 
 def get_output(input_size, kernel_size, strides, padding, dilation_rate=None):
@@ -91,6 +91,7 @@ def get_output(input_size, kernel_size, strides, padding, dilation_rate=None):
     kernel_size = np.array(kernel_size)
     strides = np.array(strides)
     dilation_rate = np.array(dilation_rate) if dilation_rate else np.ones_like(kernel_size)
+    assert input_size.ndim == kernel_size.ndim == strides.ndim == dilation_rate.ndim
 
     if padding in {"none", "valid"}:
         output = np.ceil((input_size - dilation_rate*(kernel_size - 1)) / strides)

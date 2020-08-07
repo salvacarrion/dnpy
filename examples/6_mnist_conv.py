@@ -42,18 +42,18 @@ def main():
     l_in = Input(shape=x_train[0].shape)
     l = l_in
 
-    l = Conv2D(l, filters=2, kernel_size=(3, 3), strides=(1, 1), padding="none")
-    l = MaxPool(l, pool_size=(3, 3), strides=(2, 2), padding="none")
-    l = LeakyRelu(l, alpha=0.1)
+    # l = Conv2D(l, filters=2, kernel_size=(3, 3), strides=(1, 1), padding="none")
+    # l = MaxPool(l, pool_size=(3, 3), strides=(2, 2), padding="none")
+    # l = LeakyRelu(l, alpha=0.0)
     #
     # l = Conv2D(l, filters=4, kernel_size=(3, 3), strides=(1, 1), padding="same")
     # l = MaxPool(l, pool_size=(3, 3), strides=(2, 2), padding="none")
     # l = Relu(l)
-    #
-    # l = DepthwiseConv2D(l, kernel_size=(3, 3), strides=(1, 1), padding="none")
-    # l = PointwiseConv2D(l, filters=1)
-    # l = MaxPool(l, pool_size=(3, 3), strides=(2, 2), padding="none")
-    # l = Relu(l)
+
+    l = DepthwiseConv2D(l, kernel_size=(3, 3), strides=(1, 1), padding="none")
+    l = PointwiseConv2D(l, filters=1)
+    l = MaxPool(l, pool_size=(3, 3), strides=(2, 2), padding="none")
+    l = Relu(l)
 
     l = Reshape(l, shape=(-1))
     l = Dense(l, num_classes, kernel_initializer=initializers.RandomUniform())
