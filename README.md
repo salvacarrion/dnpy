@@ -16,27 +16,28 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
             - Sigmoid
             - Tanh
             - Softmax
+            - PRelu
         - Embedding
     - Regularization:
         - BathNorm
         - Dropout
-        - GaussianNoise => Pending... 
+        - GaussianNoise
     - Operators:
         - Element-wise (Operator as argument):
             - Add, Subtract, Multiply, Divide, Power, Maximum, Minimum,...
         - Others: Average, Concatenate
     - Convolutions:
         - Conv2D
-        - TransposedConv => Pending... 
+        - TransposedConv2D => Pending... 
         - DepthwiseConv2D
         - PointwiseConv2D
-        - SpatialSeparableConv* => Pending... 
         - LocallyConnected2D => Pending... 
+        - SpatialSeparableConv* => Pending... 
     - Pooling:
-        - MaxPool
-        - AvgPool
-        - GlobalMaxPool
-        - GlobalAvgPool
+        - MaxPool2D
+        - AvgPool2D
+        - GlobalMaxPool2D
+        - GlobalAvgPool2D
     - Recurrent:
         - RNN => Pending...
         - LSTM => Pending...

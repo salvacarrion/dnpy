@@ -37,7 +37,7 @@ def main():
     # Define architecture
     l_in = Input(shape=x_train[0].shape)
     l = Reshape(l_in, shape=(28*28,))
-    l = Relu(Dense(l, 1024))
+    l = PRelu(Dense(l, 1024))
     l = LeakyRelu(Dense(l, 1024), alpha=0.1)
     l_out = Softmax(Dense(l, num_classes))
 

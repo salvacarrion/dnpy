@@ -25,6 +25,28 @@ class Dropout(Layer):
         self.parents[0].delta = self.delta * self.gate
 
 
+class GaussianNoise(Layer):
+
+    def __init__(self, l_in, mean=0.0, stddev=1.0, name="GaussianNoise"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
+
+        self.mean = mean
+        self.stddev = stddev
+
+        self.oshape = self.parents[0].oshape
+
+    def forward(self):
+        if self.training:
+            noise = np.random.normal(loc=self.mean, scale=self.stddev, size=self.parents[0].output.shape)
+            self.output = self.parents[0].output + noise
+        else:
+            self.output = self.parents[0].output
+
+    def backward(self):
+        self.parents[0].delta = np.array(self.delta)
+
+
 class BatchNorm(Layer):
 
     def __init__(self, l_in, momentum=0.99, bias_correction=False, gamma_initializer=None,

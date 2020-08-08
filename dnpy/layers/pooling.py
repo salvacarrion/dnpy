@@ -28,9 +28,9 @@ class Pool(Layer):
         self.oshape = tuple([l_in.oshape[0]] + _oshape.tolist())
 
 
-class MaxPool(Pool):
+class MaxPool2D(Pool):
 
-    def __init__(self, l_in, pool_size, strides=(2, 2), padding="none", name="MaxPool"):
+    def __init__(self, l_in, pool_size, strides=(2, 2), padding="none", name="MaxPool2D"):
         super().__init__(l_in, pool_size=pool_size, strides=strides,
                          padding=padding, name=name)
 
@@ -99,16 +99,16 @@ class MaxPool(Pool):
                                 self.pad_left:(self.shape_pad_in[2] - self.pad_right)]
 
 
-class GlobalMaxPool(MaxPool):
+class GlobalMaxPool2D(MaxPool2D):
 
-    def __init__(self, l_in, name="GlobalMaxPool"):
+    def __init__(self, l_in, name="GlobalMaxPool2D"):
         pool_size = l_in.oshape[1:]
         super().__init__(l_in, pool_size=pool_size, strides=(1, 1), padding="none", name=name)
 
 
-class AvgPool(Pool):
+class AvgPool2D(Pool):
 
-    def __init__(self, l_in, pool_size, strides=(2, 2), padding="none", name="AvgPool"):
+    def __init__(self, l_in, pool_size, strides=(2, 2), padding="none", name="AvgPool2D"):
         super().__init__(l_in, pool_size=pool_size, strides=strides,
                          padding=padding, name=name)
 
@@ -174,8 +174,8 @@ class AvgPool(Pool):
                                 self.pad_left:(self.shape_pad_in[2] - self.pad_right)]
 
 
-class GlobalAvgPool(AvgPool):
+class GlobalAvgPool2D(AvgPool2D):
 
-    def __init__(self, l_in, name="GlobalAvgPool"):
+    def __init__(self, l_in, name="GlobalAvgPool2D"):
         pool_size = l_in.oshape[1:]
         super().__init__(l_in, pool_size=pool_size, strides=(1, 1), padding="none", name=name)

@@ -28,6 +28,44 @@ class Relu(LeakyRelu):
         super().__init__(l_in, alpha=0.0, name=name)
 
 
+class PRelu(Layer):
+
+    def __init__(self, l_in, alpha_initializer=None, alpha_regularizer=None, name="LeakyRelu"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
+
+        self.oshape = self.parents[0].oshape
+        self.gate = None
+
+        # Params and grads
+        self.params = {'alpha': np.zeros(self.oshape)}
+        self.grads = {'alpha': np.zeros_like(self.params['alpha'])}
+
+        # Initialization: bias
+        if alpha_initializer is None:
+            self.alpha_initializer = initializers.Zeros()
+        else:
+            self.alpha_initializer = alpha_initializer
+
+        # Add regularizers
+        self.alpha_regularizer = alpha_regularizer
+
+    def initialize(self, optimizer=None):
+        super().initialize(optimizer=optimizer)
+
+        # Initialize params
+        self.alpha_initializer.apply(self.params, ['alpha'])
+
+    def forward(self):
+        self.gate = (self.parents[0].output > 0)
+        self.output = np.where(self.gate, self.parents[0].output, self.parents[0].output * self.params['alpha'])
+
+    def backward(self):
+        self.parents[0].delta = np.where(self.gate, self.delta, self.delta * self.params['alpha'])
+        # Select deltas with negative date (inv&mult)
+        self.grads['alpha'] += np.mean(self.delta*np.invert(self.gate).astype(float), axis=0)
+
+
 class Sigmoid(Layer):
 
     def __init__(self, l_in, name="Sigmoid"):

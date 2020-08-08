@@ -172,6 +172,107 @@ class Conv2D(Conv):
                                 self.pad_left:(self.shape_pad_in[2] - self.pad_right)]
 
 
+class Conv2D(Conv):
+
+    def __init__(self, l_in, filters, kernel_size, strides=(1, 1), padding="same",
+                 dilation_rate=(1, 1),
+                 kernel_initializer=None, bias_initializer=None,
+                 kernel_regularizer=None, bias_regularizer=None, name="Conv2D"):
+
+        super().__init__(l_in, filters=filters, kernel_size=kernel_size, strides=strides,
+                         padding=padding, dilation_rate=dilation_rate,
+                         kernel_initializer=kernel_initializer, bias_initializer=bias_initializer,
+                         kernel_regularizer=kernel_regularizer, bias_regularizer=bias_regularizer, name=name)
+
+        # Specific pads
+        (self.pad_top, self.pad_bottom), (self.pad_left, self.pad_right) = utils.get_side_paddings(self.pads)
+
+        assert len(self.kernel_size) == 3
+        assert len(self.strides) == 2
+
+    def forward(self):
+        batch_size = self.parents[0].output.shape[0]
+        self.output = np.zeros((batch_size, *self.oshape))
+
+        # Get kernel sizes
+        (kz, ky, kx) = self.kernel_size
+        (sy, sx) = self.strides
+        (of, oz, oy, ox) = (self.filters, *self.oshape)
+
+        # Reshape input adding paddings
+        self.shape_pad_in = tuple(np.array(self.parents[0].oshape) + np.array([0, *self.pads]))
+        self.in_fmap = np.zeros((batch_size, *self.shape_pad_in))
+        self.in_fmap[:, :,
+        self.pad_top:(self.shape_pad_in[1] - self.pad_bottom),
+        self.pad_left:(self.shape_pad_in[2] - self.pad_right)] = self.parents[0].output
+
+        for f in range(of):  # For each filter
+
+                for y in range(oy):  # Walk output's height
+                    in_y = y * sy
+
+                    for x in range(ox):  # Walk output's width
+                        in_x = x * sx
+
+                        # Get slice
+                        in_slice = self.in_fmap[:, :,
+                                   in_y:in_y + ky,
+                                   in_x:in_x + kx]
+
+                        # Perform convolution
+                        _map = in_slice * self.params['w1'][f] + self.params['b1'][f]
+                        _red = np.sum(_map, axis=(1, 2, 3))
+                        self.output[:, f, y, x] = _red
+
+    def backward(self):
+        # Add padding to the delta, to simplify code
+        self.parents[0].delta = np.zeros_like(self.in_fmap)
+
+        # Get kernel sizes
+        (kz, ky, kx) = self.kernel_size
+        (sy, sx) = (self.strides)
+        (of, oz, oy, ox) = (self.filters, *self.oshape)
+
+        for f in range(of):  # For each filter
+
+                for y in range(oy):  # Walk output's height
+                    in_y = y * sy
+
+                    for x in range(ox):  # Walk output's width
+                        in_x = x * sx
+
+                        # Add dL/dX (of window)
+                        dhi = self.delta[:, f, y, x]
+                        w1_f = self.params['w1'][f]
+                        dx = np.outer(dhi, w1_f).reshape((len(dhi), *w1_f.shape))
+                        self.parents[0].delta[:, :,
+                        in_y:in_y + ky,
+                        in_x:in_x + kx] += dx
+
+                        # Get X (of window)
+                        in_slice = self.in_fmap[:, :,
+                                   in_y:in_y + ky,
+                                   in_x:in_x + kx]
+
+                        # Compute gradients
+                        g_w1 = np.mean(np.expand_dims(dhi, axis=(1, 2, 3)) * in_slice, axis=0)
+                        g_b1 = np.mean(dhi, axis=0)  # * 1.0
+
+                        # Add regularizers (if needed)
+                        if self.kernel_regularizer:
+                            g_w1 += self.kernel_regularizer.backward(self.params['w1'][f])
+                        if self.bias_regularizer:
+                            g_b1 += self.bias_regularizer.backward(self.params['b1'][f])
+
+                        self.grads["w1"][f] += g_w1
+                        self.grads["b1"][f] += g_b1
+
+        # Remove padding from delta
+        self.parents[0].delta = self.parents[0].delta[:, :,
+                                self.pad_top:(self.shape_pad_in[1] - self.pad_bottom),
+                                self.pad_left:(self.shape_pad_in[2] - self.pad_right)]
+
+
 class PointwiseConv2D(Conv2D):
 
     def __init__(self, l_in, filters,
