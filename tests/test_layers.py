@@ -354,7 +354,7 @@ class TestStringMethods(unittest.TestCase):
         # Forward
         l0 = Input(shape=t1_in_img[0].shape)
         l0.output = t1_in_img
-        l1 = MaxPool(l0, pool_size=(2, 2), strides=(2, 2), padding="none")
+        l1 = MaxPool2D(l0, pool_size=(2, 2), strides=(2, 2), padding="none")
         l1.forward()
         self.assertTrue(np.all(t1_ref_img == l1.output))
 
@@ -396,7 +396,7 @@ class TestStringMethods(unittest.TestCase):
         # Forward
         l0 = Input(shape=t1_in_img[0].shape)
         l0.output = t1_in_img
-        l1 = MaxPool(l0, pool_size=(2, 2), strides=(2, 2), padding="same")
+        l1 = MaxPool2D(l0, pool_size=(2, 2), strides=(2, 2), padding="same")
         l1.forward()
         self.assertTrue(np.all(t1_ref_img == l1.output))
 
@@ -437,7 +437,7 @@ class TestStringMethods(unittest.TestCase):
         # Forward
         l0 = Input(shape=t1_in_img[0].shape)
         l0.output = t1_in_img
-        l1 = AvgPool(l0, pool_size=(2, 2), strides=(2, 2), padding="none")
+        l1 = AvgPool2D(l0, pool_size=(2, 2), strides=(2, 2), padding="none")
         l1.forward()
         self.assertTrue(np.all(t1_ref_img == l1.output))
 
@@ -479,7 +479,7 @@ class TestStringMethods(unittest.TestCase):
         # Forward
         l0 = Input(shape=t1_in_img[0].shape)
         l0.output = t1_in_img
-        l1 = AvgPool(l0, pool_size=(2, 2), strides=(2, 2), padding="same")
+        l1 = AvgPool2D(l0, pool_size=(2, 2), strides=(2, 2), padding="same")
         l1.forward()
         self.assertTrue(np.all(t1_ref_img == l1.output))
 
