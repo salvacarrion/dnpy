@@ -12,6 +12,19 @@ from dnpy import utils
 np.random.seed(42)
 
 
+def get_params(model):
+    params = []
+    for i, l in enumerate(model.fts_layers, 0):
+        p = copy.deepcopy(l.params)
+        params.append(p)
+    return params
+
+
+def set_params(model, params):
+    for i, l in enumerate(model.fts_layers, 0):
+        l.params = params[i]
+
+
 def get_backward_delta_grads(model):
     backward_grads = []
     backward_deltas = []
@@ -26,24 +39,13 @@ def get_backward_delta_grads(model):
     return backward_deltas, backward_grads
 
 
-def check_gradient_model(model, x_train, y_train, epsilon=10e-5):
-    # Train model
-    model.set_mode('train')
+def set_backward_delta_grads(model, backward_grads):
+    for i, l in enumerate(model.fts_layers, 0):
+        l.grads = backward_grads[i]
+        
 
-    # Pass 1 ( x + 0 )
+def test_fw_bw(model, x_train, y_train):
     x_train_mb, y_train_mb = [x_train], [y_train]
-    model.reset_grads()
-    model.feed_input(x_train_mb)
-    model.forward()
-    b_losses1, b_deltas1 = model.compute_losses(y_target=y_train_mb)
-    model.do_delta(b_deltas1)
-    model.backward()
-
-    # Results
-    backward_deltas1, backward_grads1 = get_backward_delta_grads(model)
-
-    # Pass 2 ( x + epsilon )
-    x_train_mb, y_train_mb = [x_train + epsilon], [y_train]
     model.reset_grads()
     model.feed_input(x_train_mb)
     model.forward()
@@ -53,32 +55,61 @@ def check_gradient_model(model, x_train, y_train, epsilon=10e-5):
 
     # Results
     backward_deltas2, backward_grads2 = get_backward_delta_grads(model)
+    return (b_losses2, b_deltas2), (backward_deltas2, backward_grads2)
 
-    # Pass 3 ( x - epsilon )
-    x_train_mb, y_train_mb = [x_train - epsilon], [y_train]
+
+def check_gradient_model(model, x_train, y_train, epsilon=10e-7):
+    # Train model
+    model.set_mode('train')
+
     model.reset_grads()
-    model.feed_input(x_train_mb)
-    model.forward()
-    b_losses3, b_deltas3 = model.compute_losses(y_target=y_train_mb)
-    model.do_delta(b_deltas3)
-    model.backward()
+    model_plus = copy.deepcopy(model)
+    model_minus = copy.deepcopy(model)
+    params1 = get_params(model)
 
-    # Results
-    backward_deltas3, backward_grads3 = get_backward_delta_grads(model)
+    # Pass 1 ( x + 0 )
+    (b_losses1, b_deltas1), (backward_deltas1, backward_grads1) = test_fw_bw(model, x_train, y_train)
 
-    # Gradient
-    analytical_dx = np.mean(np.sum(b_deltas1[0], axis=1), axis=0)
-    numerical_dx = (b_losses2[0] - b_losses3[0]) / (2.0 * epsilon)
+    # Grad check
+    for li in range(len(params1)):
+        for kp, vp in params1[li].items():
 
-    # Check gradient
-    abs_err = math.fabs(analytical_dx - numerical_dx)
-    max_err = max(analytical_dx, numerical_dx)
-    rel_err = abs_err / max_err
+            # f(theta + epsilon)
+            new_params_plus = copy.deepcopy(params1)
+            new_params_plus[li][kp] = vp + epsilon
 
-    if rel_err < 10e-4:
-        print("ok")
-    else:
-        print("not ok")
+            set_params(model_plus, new_params_plus)
+            (b_losses_plus, b_deltas_plus), (backward_deltas_plus, backward_grads_plus) = test_fw_bw(model_plus, x_train, y_train)
+
+            # f(theta - epsilon)
+            new_params_minus = copy.deepcopy(params1)
+            new_params_minus[li][kp] = vp - epsilon
+
+            set_params(model_minus, new_params_minus)
+            (b_losses_minus, b_deltas_minus), (backward_deltas_minus, backward_grads_minus) = test_fw_bw(model_minus, x_train, y_train)
+
+            # Gradient
+            analytical_dx = model.fts_layers[li].grads[kp]
+            numerica_J_plus = model_plus.fts_layers[li].output
+            numerica_J_minus = model_minus.fts_layers[li].output
+            numerical_dx = (numerica_J_plus - numerica_J_minus) / (2.0 * epsilon)
+            asds = 3
+
+            numerator = np.linalg.norm(analytical_dx-numerical_dx)
+            denominator = np.linalg.norm(analytical_dx) + np.linalg.norm(numerical_dx)
+            diff = numerator/denominator
+
+            # numerical_dx = float((b_losses_plus[0] - b_losses_minus[0]) / (2.0 * epsilon))
+
+            # Check gradient
+            abs_err = math.fabs(analytical_dx - numerical_dx)
+            max_err = max(analytical_dx, numerical_dx)
+            rel_err = abs_err / max_err
+
+            if rel_err < 10e-7:
+                print("ok")
+            else:
+                print("not ok")
 
     return rel_err
 
@@ -103,15 +134,13 @@ class TestGradCheck(unittest.TestCase):
 
         # Select train/test
         c = 0.8
-        tr_size = int(len(X) * c)
+        tr_size = 1#int(len(X) * c)
         x_train, y_train = X[:tr_size], Y[:tr_size]
 
         # Define architecture
         l_in = Input(shape=x_train[0].shape)
         l = l_in
         l = Dense(l, 20)
-        l = Relu(l)
-        l = Dense(l, 15)
         l = Relu(l)
         l = Dense(l, 1)
         l_out = l
@@ -121,7 +150,7 @@ class TestGradCheck(unittest.TestCase):
         model.build(
             l_in=[l_in],
             l_out=[l_out],
-            optimizer=RMSProp(lr=0.01),
+            optimizer=Adam(lr=0.01),
             losses=[losses.MSE()],
             metrics=[[metrics.MSE(), metrics.MAE()]],
             debug=False
