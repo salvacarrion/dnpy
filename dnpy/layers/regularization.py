@@ -58,9 +58,11 @@ class BatchNorm(Layer):
 
         # Params and grads
         self.params = {'gamma': np.ones(self.parents[0].oshape),
-                       'beta': np.zeros(self.parents[0].oshape)}
-        self.params_fixed = {'moving_mu': np.zeros(self.parents[0].oshape),
-                             'moving_var': np.ones(self.parents[0].oshape)}
+                       'beta': np.zeros(self.parents[0].oshape),
+                       'moving_mu': np.zeros(self.parents[0].oshape),
+                       'moving_var': np.ones(self.parents[0].oshape),
+                       }
+
         self.grads = {'gamma': np.zeros_like(self.params["gamma"]),
                       'beta': np.zeros_like(self.params["beta"])}
         self.cache = {}
@@ -106,8 +108,8 @@ class BatchNorm(Layer):
                 # Compute exponentially weighted average (aka moving average)
                 # No bias correction => Use the implicit "correction" of starting with mu=zero and var=one
                 # Bias correction => Simply apply weighted average
-                moving_mu = self.momentum * self.params_fixed['moving_mu'] + (1.0 - self.momentum) * mu
-                moving_var = self.momentum * self.params_fixed['moving_var'] + (1.0 - self.momentum) * var
+                moving_mu = self.momentum * self.params['moving_mu'] + (1.0 - self.momentum) * mu
+                moving_var = self.momentum * self.params['moving_var'] + (1.0 - self.momentum) * var
 
             # Compute bias correction
             # (Not working! It's too aggressive)
@@ -117,11 +119,11 @@ class BatchNorm(Layer):
                 moving_var *= bias_correction
 
             # Save moving averages
-            self.params_fixed['moving_mu'] = moving_mu
-            self.params_fixed['moving_var'] = moving_var
+            self.params['moving_mu'] = moving_mu
+            self.params['moving_var'] = moving_var
         else:
-            mu = self.params_fixed['moving_mu']
-            var = self.params_fixed['moving_var']
+            mu = self.params['moving_mu']
+            var = self.params['moving_var']
 
         inv_var = np.sqrt(var + self.epsilon)
         x_norm = (x-mu)/inv_var

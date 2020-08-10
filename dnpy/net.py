@@ -1,6 +1,7 @@
 import copy
 import math
 import numpy as np
+import pickle
 
 from dnpy.layers import Softmax
 from dnpy.losses import CrossEntropy
@@ -397,3 +398,28 @@ class Net:
         for i, l in enumerate(self.fts_layers, 0):
             assert len(l.grads) == len(grads[i])
             l.grads = grads[i]
+
+    def load(self, filename):
+        # Load data
+        with open(filename, 'rb') as fp:
+            data = pickle.load(fp)
+
+        # Set data
+        self.set_params(data['params'])
+        grads = data.get('grads')
+        if grads:
+            self.set_grads(grads)
+        print("Model loaded!")
+
+    def save(self, filename, save_grads=False):
+        data = {
+            'params': self.get_params(),
+        }
+
+        if save_grads:
+            data['grads'] = self.get_grads()
+
+        # Save data
+        with open(filename, 'wb') as fp:
+            pickle.dump(data, fp)
+        print("Model saved!")

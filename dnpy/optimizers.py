@@ -30,6 +30,9 @@ class SGD(Optimizer):
 
     def apply(self, params, grads, step_i=None):
         for k in params.keys():
+            # Exclude no trainable params
+            if k not in grads:
+                continue
 
             # Momentum
             v_prev = self.V[k]
@@ -69,6 +72,10 @@ class RMSProp(Optimizer):
 
     def apply(self, params, grads, step_i=None):
         for k in params.keys():
+            # Exclude no trainable params
+            if k not in grads:
+                continue
+
             # Momentum
             self.S[k] = self.rho * self.S[k] + (1.0 - self.rho) * grads[k]**2
 
@@ -98,6 +105,10 @@ class Adam(Optimizer):
 
     def apply(self, params, grads, step_i=None):
         for k in params.keys():
+            # Exclude no trainable params
+            if k not in grads:
+                continue
+
             # Momentum
             self.V[k] = self.beta_1 * self.V[k] + (1.0 - self.beta_1) * grads[k]
             self.S[k] = self.beta_2 * self.S[k] + (1.0 - self.beta_2) * grads[k] ** 2

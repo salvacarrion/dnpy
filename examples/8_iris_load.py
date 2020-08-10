@@ -38,7 +38,7 @@ def main():
 
     # Params *********************************
     batch_size = int(len(x_train)/5)
-    epochs = 500
+    epochs = 100
 
     # Define architecture
     l_in = Input(shape=x_train[0].shape)
@@ -56,7 +56,7 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        optimizer=Adam(lr=10e-2),
+        optimizer=Adam(lr=0.1),
         losses=[losses.CrossEntropy()],
         metrics=[[metrics.CategoricalAccuracy()]],
         debug=False
@@ -65,19 +65,21 @@ def main():
     # Print model
     mymodel.summary()
 
-    # Train
-    mymodel.fit([x_train], [y_train],
-                x_test=[x_test], y_test=[y_test],
-                batch_size=batch_size, epochs=epochs,
-                evaluate_epoch=True,
-                print_rate=10)
+    # Evaluate
+    print("\n----------------------")
+    print("Evaluation (no weights):")
+    lo, me = mymodel.evaluate([x_test], [y_test], batch_size=batch_size)
+    str_eval = mymodel._format_eval(lo, me)
+    print(f"- Losses[{', '.join(str_eval[0])}]")
+    print(f"- Metrics[{'; '.join(str_eval[1])}]")
 
-    # Save mode
-    mymodel.save("./trained/trained_iris.pkl", save_grads=True)
+    # Load data
+    print('')
+    mymodel.load("./trained/trained_iris.pkl")
 
     # Evaluate
     print("\n----------------------")
-    print("Evaluation:")
+    print("Evaluation (pretrained):")
     lo, me = mymodel.evaluate([x_test], [y_test], batch_size=batch_size)
     str_eval = mymodel._format_eval(lo, me)
     print(f"- Losses[{', '.join(str_eval[0])}]")
