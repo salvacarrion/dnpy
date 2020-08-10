@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -104,3 +105,24 @@ def get_output(input_size, kernel_size, strides, padding, dilation_rate=None):
         raise ValueError("Unknown padding")
 
     return output.astype(int)
+
+
+def params2vector(params):
+    vector = []
+    for li in range(len(params)):
+        for kp, vp in params[li].items():
+            vector.append(vp.reshape(-1, 1))
+    vector = np.concatenate(vector, axis=0)
+    return vector
+
+
+def vector2params(vector, params):
+    pi = 0
+    new_params = copy.deepcopy(params)
+    for li in range(len(params)):
+        for kp, vp in params[li].items():
+            new_vp = vector[pi:pi+vp.size]
+            new_vp = np.reshape(new_vp, vp.shape)
+            new_params[li][kp] = new_vp
+            pi += vp.size
+    return new_params

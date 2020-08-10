@@ -1,5 +1,7 @@
+import copy
 import math
 import numpy as np
+
 from dnpy.layers import Softmax
 from dnpy.losses import CrossEntropy
 
@@ -369,3 +371,29 @@ class Net:
             print(f"#{i+1}:\t{l.name}\t\t-\t{ishapes}\t=>\t{l.oshape}")
 
         print('')
+
+    def get_params(self):
+        params = []
+        for i, l in enumerate(self.fts_layers, 0):
+            p = copy.deepcopy(l.params)
+            params.append(p)
+        return params
+
+    def set_params(self, params):
+        assert len(self.fts_layers) == len(params)
+        for i, l in enumerate(self.fts_layers, 0):
+            assert len(l.params) == len(params[i])
+            l.params = params[i]
+
+    def get_grads(self):
+        grads = []
+        for i, l in enumerate(self.fts_layers, 0):
+            g = copy.deepcopy(l.grads)
+            grads.append(g)
+        return grads
+
+    def set_grads(self, grads):
+        assert len(self.fts_layers) == len(grads)
+        for i, l in enumerate(self.fts_layers, 0):
+            assert len(l.grads) == len(grads[i])
+            l.grads = grads[i]

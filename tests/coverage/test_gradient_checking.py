@@ -12,102 +12,37 @@ from dnpy import utils
 np.random.seed(42)
 
 
-def get_params(model):
-    params = []
-    for i, l in enumerate(model.fts_layers, 0):
-        p = copy.deepcopy(l.params)
-        params.append(p)
-    return params
-
-
-def set_params(model, params):
-    for i, l in enumerate(model.fts_layers, 0):
-        l.params = params[i]
-
-
-def get_grads(model):
-    grads = []
-    for i, l in enumerate(model.fts_layers, 0):
-        g = copy.deepcopy(l.grads)
-        grads.append(g)
-    return grads
-
-def get_backward_delta_grads(model):
-    backward_grads = []
-    backward_deltas = []
-    for i, l in enumerate(model.fts_layers, 1):
-        # Grads
-        grads = copy.deepcopy(l.grads)
-        backward_grads.append(grads)
-
-        # Deltas
-        deltas = copy.deepcopy(l.delta)
-        backward_deltas.append(deltas)
-    return backward_deltas, backward_grads
-
-
-def set_backward_delta_grads(model, backward_grads):
-    for i, l in enumerate(model.fts_layers, 0):
-        l.grads = backward_grads[i]
-        
-
-def test_fw_bw(model, x_train, y_train):
-    x_train_mb, y_train_mb = [x_train], [y_train]
+def fw_bw(model, x_train_mb, y_train_mb):
+    # Forward
     model.feed_input(x_train_mb)
     model.forward()
-    b_losses2, b_deltas2 = model.compute_losses(y_target=y_train_mb)
+
+    # Compute loss
+    losses, deltas = model.compute_losses(y_target=y_train_mb)
+
+    # Backward
     model.reset_grads()
-    model.do_delta(b_deltas2)
+    model.do_delta(deltas)
     model.backward()
 
     # Results
-    backward_deltas2, backward_grads2 = get_backward_delta_grads(model)
-    return (b_losses2, b_deltas2), (backward_deltas2, backward_grads2)
-
-def params2vector(params):
-    vector = []
-    for li in range(len(params)):
-        for kp, vp in params[li].items():
-            vector.append(vp.reshape(-1, 1))
-    vector = np.concatenate(vector, axis=0)
-    return vector
+    return losses, deltas
 
 
-def vector2params(vector, params):
-    pi = 0
-    new_params = copy.deepcopy(params)
-    for li in range(len(params)):
-        for kp, vp in params[li].items():
-            new_vp = vector[pi:pi+vp.size]
-            new_vp = np.reshape(new_vp, vp.shape)
-            new_params[li][kp] = new_vp
-            pi += vp.size
-    return new_params
-
-
-def check_gradient_model(model, x_train, y_train, epsilon=10e-7):
-    # Train model
-    model.set_mode('train')
-
-    model.reset_grads()
-
+def _gradient_check(model, x_train, y_train, epsilon=10e-7, burn_in_passes=0):
     # Pass 1 ( x + 0 )
-    (b_losses1, b_deltas1), (backward_deltas1, backward_grads1) = (None, None), (None, None)
-
-    for i in range(100):
-        (b_losses1, b_deltas1), (backward_deltas1, backward_grads1) = test_fw_bw(model, x_train, y_train)
-        model.apply_grads()
-        print(b_losses1[0])
-    model_plus = copy.deepcopy(model)
-    model_minus = copy.deepcopy(model)
+    for i in range(burn_in_passes+1):
+        fw_bw(model, x_train, y_train)
+        if burn_in_passes > 0:
+            model.apply_grads()
 
     # Get params and grads
-    params1 = get_params(model)
-    grads1 = get_grads(model)
+    params0 = model.get_params()
+    grads0 = model.get_grads()
 
     # Transform params and grads to vector
-    vparams = params2vector(params1)
-    vgrads = params2vector(grads1)
+    vparams = utils.params2vector(params0)
+    vgrads = utils.params2vector(grads0)
 
     # Reserve memory
     analytical_grads = vgrads
@@ -115,101 +50,69 @@ def check_gradient_model(model, x_train, y_train, epsilon=10e-7):
 
     # Grad check
     for i in range(len(vparams)):
+        # print(f"{i}/{len(vparams)}")
         # f(theta + epsilon)
         new_vector_plus = copy.deepcopy(vparams)
         new_vector_plus[i] += epsilon
-        new_params_plus = vector2params(new_vector_plus, params1)
+        new_params_plus = utils.vector2params(new_vector_plus, params0)
 
-        set_params(model_plus, new_params_plus)
-        (b_losses_plus, b_deltas_plus), (backward_deltas_plus, backward_grads_plus) = test_fw_bw(model_plus, x_train, y_train)
+        # Set params and get loss
+        model.set_params(new_params_plus)
+        losses_plus, _ = fw_bw(model, x_train, y_train)
 
         # f(theta - epsilon)
         new_vector_minus = copy.deepcopy(vparams)
         new_vector_minus[i] -= epsilon
-        new_params_minus = vector2params(new_vector_minus, params1)
+        new_params_minus = utils.vector2params(new_vector_minus, params0)
 
-        set_params(model_minus, new_params_minus)
-        (b_losses_minus, b_deltas_minus), (backward_deltas_minus, backward_grads_minus) = test_fw_bw(model_minus, x_train, y_train)
+        # Set params and get loss
+        model.set_params(new_params_minus)
+        losses_minus, _ = fw_bw(model, x_train, y_train)
 
         # Numerical dx
-        numerical_J_plus_loss = b_losses_plus[0]
-        numerical_J_minus_loss = b_losses_minus[0]
-        numerical_dx_loss = (numerical_J_plus_loss - numerical_J_minus_loss) / (2.0 * epsilon)
+        numerical_dx_loss = (losses_plus[0] - losses_minus[0]) / (2.0 * epsilon)
         numerical_grads[i] = numerical_dx_loss
 
-        # Analytical
-        analytical_dx_loss = analytical_grads[i]
-
-        # Single error
-        numerator = abs(analytical_dx_loss - numerical_dx_loss)
-        denominator = max(analytical_dx_loss, numerical_dx_loss)
-        rel_err = numerator / denominator
-        asdasd = 3
+        # For debugging
+        # # Analytical
+        # analytical_dx_loss = analytical_grads[i]
+        #
+        # # Single error
+        # numerator = abs(analytical_dx_loss - numerical_dx_loss)
+        # denominator = max(analytical_dx_loss, numerical_dx_loss)
+        # rel_err = float(numerator / denominator)
+        # print(f"\t- Relative error (grad[{i}]): {rel_err}")
 
     # Compute relative error
     numerator = np.linalg.norm(analytical_grads-numerical_grads)
     denominator = np.linalg.norm(analytical_grads) + np.linalg.norm(numerical_grads)
     rel_err = numerator/denominator
+    return rel_err
 
-    if rel_err < 10e-7:
-        print("ok")
-    else:
-        print("not ok")
 
-    return 2
+def gradient_check(model, x_train, y_train, batch_size, max_error=10e-7, verbose=True):
+    # Setup
+    num_samples = len(x_train[0])
+    num_batches = int(num_samples / batch_size)
+    if model.mode != "train":
+        model.set_mode('train')
+
+    # Train mini-batches
+    for b in range(num_batches):
+        # Get minibatch
+        x_train_mb, y_train_mb = model.get_minibatch(x_train, y_train, b, batch_size)
+
+        # Compute error
+        rel_err = _gradient_check(model, x_train_mb, y_train_mb)
+        if verbose:
+            print("Batch {}/{}: Relative error={}".format(b + 1, num_batches, rel_err))
+
+        if rel_err > max_error:
+            return False
+    return True
 
 
 class TestGradCheck(unittest.TestCase):
-
-    def test_iris_model1(self):
-        from sklearn import datasets
-
-        # Get data
-        iris = datasets.load_iris()
-        X = iris.data  # we only take the first two features.
-        Y = iris.target
-
-        # Pre-processing
-        # Standarize
-        X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
-
-        # Classes to categorical
-        Y = (Y == 1).astype(float).reshape((-1, 1))
-
-        # Shuffle dataset
-        idxs = np.arange(len(X))
-        np.random.shuffle(idxs)
-        X, Y = X[idxs], Y[idxs]
-
-        # Select train/test
-        c = 1#0.8
-        tr_size = int(len(X) * c)
-        x_train, y_train = X[:tr_size], Y[:tr_size]
-
-        # Params *********************************
-        batch_size = int(len(x_train) / 5)
-        epochs = 1000
-
-        # Define architecture
-        l_in = Input(shape=x_train[0].shape)
-        l = Dense(l_in, 20)
-        l = Relu(l)
-        l = Dense(l, 1)
-        l_out = Sigmoid(l)
-
-        # Build network
-        model = Net()
-        model.build(
-            l_in=[l_in],
-            l_out=[l_out],
-            optimizer=Adam(lr=0.1),
-            losses=[losses.BinaryCrossEntropy()],
-            metrics=[[metrics.BinaryAccuracy()]],
-            debug=False
-        )
-
-        rel_err = check_gradient_model(model, x_train, y_train, epsilon=10e-5)
-        asdasd = 3
 
     def test_boston_model1(self):
         from sklearn import datasets
@@ -220,15 +123,15 @@ class TestGradCheck(unittest.TestCase):
 
         # Pre-processing
         # Normalize
-        # X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
+        X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
 
-        # # Shuffle dataset
-        # idxs = np.arange(len(X))
-        # np.random.shuffle(idxs)
-        # X, Y = X[idxs], Y[idxs]
+        # Shuffle dataset
+        idxs = np.arange(len(X))
+        np.random.shuffle(idxs)
+        X, Y = X[idxs], Y[idxs]
 
         # Select train/test
-        c = 1#0.8
+        c = 1  # 0.8
         tr_size = int(len(X) * c)
         x_train, y_train = X[:tr_size], Y[:tr_size]
 
@@ -245,14 +148,65 @@ class TestGradCheck(unittest.TestCase):
         model.build(
             l_in=[l_in],
             l_out=[l_out],
-            optimizer=Adam(lr=10e-3),
+            optimizer=Adam(lr=10e-2),
             losses=[losses.MSE()],
             metrics=[[metrics.MSE(), metrics.MAE()]],
             debug=False
         )
 
-        rel_err = check_gradient_model(model, x_train, y_train, epsilon=10e-5)
-        asdasd = 3
+        # Check gradient
+        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10))
+        self.assertTrue(passed)
+
+    def test_iris_model1(self):
+        from sklearn import datasets
+
+        # Get data
+        iris = datasets.load_iris()
+        X = iris.data  # we only take the first two features.
+        Y = iris.target
+
+        # Pre-processing
+        # Standarize
+        X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
+
+        # Classes to categorical
+        num_classes = 3
+        Y = utils.to_categorical(Y, num_classes=num_classes)
+
+        # Shuffle dataset
+        idxs = np.arange(len(X))
+        np.random.shuffle(idxs)
+        X, Y = X[idxs], Y[idxs]
+
+        # Select train/test
+        c = 1  # 0.8
+        tr_size = int(len(X) * c)
+        x_train, y_train = X[:tr_size], Y[:tr_size]
+
+        # Define architecture
+        l_in = Input(shape=x_train[0].shape)
+        l = Dense(l_in, 20)
+        l = Relu(l)
+        l = Dense(l, 15)
+        l = Relu(l)
+        l = Dense(l, num_classes)
+        l_out = Softmax(l)
+
+        # Build network
+        model = Net()
+        model.build(
+            l_in=[l_in],
+            l_out=[l_out],
+            optimizer=Adam(lr=10e-2),
+            losses=[losses.CrossEntropy()],
+            metrics=[[metrics.CategoricalAccuracy()]],
+            debug=False
+        )
+
+        # Check gradient
+        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10))
+        self.assertTrue(passed)
 
     def test_mnist_model1(self):
         from keras import datasets
@@ -269,14 +223,13 @@ class TestGradCheck(unittest.TestCase):
         y_train = utils.to_categorical(y_train, num_classes=num_classes)
 
         # Shuffle dataset
-        # x_train, y_train = utils.shuffle_dataset(x_train, y_train)
-        # x_train = x_train[:100]
-        # y_train = y_train[:100]
+        x_train, y_train = utils.shuffle_dataset(x_train, y_train)
 
         # Define architecture
         l_in = Input(shape=x_train[0].shape)
         l = Reshape(l_in, shape=(28 * 28,))
         l = PRelu(Dense(l, 1024))
+        l = LeakyRelu(Dense(l, 1024), alpha=0.1)
         l_out = Softmax(Dense(l, num_classes))
 
         # Build network
@@ -284,14 +237,16 @@ class TestGradCheck(unittest.TestCase):
         model.build(
             l_in=[l_in],
             l_out=[l_out],
-            optimizer=Adam(lr=0.001),
+            optimizer=Adam(lr=10e-3),
             losses=[losses.CrossEntropy()],
             metrics=[[metrics.CategoricalAccuracy()]],
             debug=False,
             smart_derivatives=False,
         )
 
-        rel_err = check_gradient_model(model, x_train, y_train, epsilon=10e-5)
+        # Check gradient
+        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10))
+        self.assertTrue(passed)
 
 
 if __name__ == "__main__":
