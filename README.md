@@ -19,7 +19,7 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
             - PRelu
         - Embedding
     - Regularization:
-        - BathNorm
+        - BatchNorm
         - Dropout
         - GaussianNoise
     - Operators:
