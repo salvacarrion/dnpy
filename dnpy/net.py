@@ -360,17 +360,40 @@ class Net:
         return metrics
 
     def summary(self):
-        print('==================================')
-        print("Model summary")
-        print('==================================')
+        total_params = 0
+        total_tr_params = 0
+        total_notr_params = 0
+        line_length = 75
 
+        print('='*line_length)
+        print("Model summary")
+        print('='*line_length)
+        print("{:<20} {:<20} {:<20} {:<10}".format("Layer (type)", "Input Shape/s", "Output Shape", "Param #"))
+        print('-'*line_length)
         for i, l in enumerate(self.fts_layers):
+
+            # Get shapes
             ishapes = []
             for l_in in l.parents:
                 ishapes.append(l_in.oshape)
             ishapes = ishapes if len(ishapes) > 1 else l.oshape  # other / input
-            print(f"#{i+1}:\t{l.name}\t\t-\t{ishapes}\t=>\t{l.oshape}")
+            oshape = l.oshape
 
+            # Get params
+            tr_params, notr_params = l.get_num_params()
+            params = tr_params + notr_params
+            total_tr_params += tr_params
+            total_notr_params += notr_params
+            total_params += params
+
+            # Print line
+            print("{:<20} {:<20} {:<20} {:<10}".format(str(l.name), str(ishapes), str(oshape), str(params)))
+
+        print('-'*line_length)
+        print('Total params: {:,}'.format(total_params))
+        print('Trainable params: {:,}'.format(total_tr_params))
+        print('Non-trainable params: {:,}'.format(total_notr_params))
+        print('-'*line_length)
         print('')
 
     def get_params(self, only_trainable=False):

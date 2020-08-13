@@ -39,6 +39,17 @@ class Layer:
     def backward(self):
         pass
 
+    def get_num_params(self):
+        tr_params, notr_params = 0, 0
+
+        # Get number of params
+        for k, v in self.params.items():
+            if k in self.grads:  # Trainable params
+                tr_params += v.size
+            else:  # No-trainable params
+                notr_params += v.size
+        return tr_params, notr_params
+
     def print_stats(self, print_tensors=False):
             print(f"\t=> [DEBUG]: {self.name} layer:")
             if self.parents[0] is not None:
