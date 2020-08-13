@@ -373,18 +373,26 @@ class Net:
 
         print('')
 
-    def get_params(self):
+    def get_params(self, only_trainable=False):
         params = []
         for i, l in enumerate(self.fts_layers, 0):
-            p = copy.deepcopy(l.params)
+            layer_params = l.params
+            if only_trainable:  # Copy only if it's trainable (used in grad check, batchnorm,...)
+                layer_params = {k: v for k, v in l.params.items() if k in l.grads}
+            p = copy.deepcopy(layer_params)
             params.append(p)
         return params
 
-    def set_params(self, params):
+    def set_params(self, params, only_trainable=False):
         assert len(self.fts_layers) == len(params)
         for i, l in enumerate(self.fts_layers, 0):
-            assert len(l.params) == len(params[i])
-            l.params = params[i]
+            if only_trainable:
+                for k, v in l.params.items():
+                    if k in params[i]:  # Add new only if exists (used in grad check, batchnorm,...)
+                        l.params[k] = params[i][k]
+            else:
+                assert len(l.params) == len(params[i])
+                l.params = params[i]
 
     def get_grads(self):
         grads = []

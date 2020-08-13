@@ -29,7 +29,7 @@ def fw_bw(model, x_train_mb, y_train_mb):
     return losses, deltas
 
 
-def _gradient_check(model, x_train, y_train, epsilon=10e-7, burn_in_passes=0):
+def _gradient_check(model, x_train, y_train, max_samples, epsilon=10e-7, burn_in_passes=0):
     # Pass 1 ( x + 0 )
     for i in range(burn_in_passes+1):
         fw_bw(model, x_train, y_train)
@@ -37,51 +37,55 @@ def _gradient_check(model, x_train, y_train, epsilon=10e-7, burn_in_passes=0):
             model.apply_grads()
 
     # Get params and grads
-    params0 = model.get_params()
+    params0 = model.get_params(only_trainable=True)
     grads0 = model.get_grads()
 
     # Transform params and grads to vector
-    vparams = utils.params2vector(params0)
-    vgrads = utils.params2vector(grads0)
+    vparams, params_slides = utils.params2vector(params0)
+    vgrads, grads_slides = utils.params2vector(grads0)
 
-    # Reserve memory
-    analytical_grads = vgrads
-    numerical_grads = np.zeros(vparams.shape)
+    sampled_idxs = utils.sample_params_slices(params_slides, max_samples=max_samples)
+    sampled_idxs = np.array(sampled_idxs)
+
+    # Reserve memory (reduced by sampling)
+    analytical_grads = vgrads[sampled_idxs]
+    numerical_grads = np.zeros(analytical_grads.shape)
 
     # Grad check
-    for i in range(len(vparams)):
-        # print(f"{i}/{len(vparams)}")
+    for i, idx in enumerate(sampled_idxs):
+        print(f"{i+1}/{len(sampled_idxs)}")
         # f(theta + epsilon)
         new_vector_plus = copy.deepcopy(vparams)
-        new_vector_plus[i] += epsilon
+        new_vector_plus[idx] += epsilon
         new_params_plus = utils.vector2params(new_vector_plus, params0)
 
         # Set params and get loss
-        model.set_params(new_params_plus)
+        model.set_params(new_params_plus, only_trainable=True)
         losses_plus, _ = fw_bw(model, x_train, y_train)
 
         # f(theta - epsilon)
         new_vector_minus = copy.deepcopy(vparams)
-        new_vector_minus[i] -= epsilon
+        new_vector_minus[idx] -= epsilon
         new_params_minus = utils.vector2params(new_vector_minus, params0)
 
         # Set params and get loss
-        model.set_params(new_params_minus)
+        model.set_params(new_params_minus, only_trainable=True)
         losses_minus, _ = fw_bw(model, x_train, y_train)
 
         # Numerical dx
         numerical_dx_loss = (losses_plus[0] - losses_minus[0]) / (2.0 * epsilon)
-        numerical_grads[i] = numerical_dx_loss
+        numerical_grads[i] = numerical_dx_loss  # i => index not sampled
 
         # For debugging
         # # Analytical
-        # analytical_dx_loss = analytical_grads[i]
+        # analytical_dx_loss = analytical_grads[i]  # i => index not sampled
         #
         # # Single error
         # numerator = abs(analytical_dx_loss - numerical_dx_loss)
         # denominator = max(analytical_dx_loss, numerical_dx_loss)
         # rel_err = float(numerator / denominator)
         # print(f"\t- Relative error (grad[{i}]): {rel_err}")
+        asd = 3
 
     # Compute relative error
     numerator = np.linalg.norm(analytical_grads-numerical_grads)
@@ -90,7 +94,7 @@ def _gradient_check(model, x_train, y_train, epsilon=10e-7, burn_in_passes=0):
     return rel_err
 
 
-def gradient_check(model, x_train, y_train, batch_size, max_error=10e-7, verbose=True):
+def gradient_check(model, x_train, y_train, batch_size, max_error=10e-7, max_samples=5, verbose=True):
     # Setup
     num_samples = len(x_train[0])
     num_batches = int(num_samples / batch_size)
@@ -103,7 +107,7 @@ def gradient_check(model, x_train, y_train, batch_size, max_error=10e-7, verbose
         x_train_mb, y_train_mb = model.get_minibatch(x_train, y_train, b, batch_size)
 
         # Compute error
-        rel_err = _gradient_check(model, x_train_mb, y_train_mb)
+        rel_err = _gradient_check(model, x_train_mb, y_train_mb, max_samples)
         if verbose:
             print("Batch {}/{}: Relative error={}".format(b + 1, num_batches, rel_err))
 
@@ -155,7 +159,7 @@ class TestGradCheck(unittest.TestCase):
         )
 
         # Check gradient
-        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10))
+        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10), max_samples=25)
         self.assertTrue(passed)
 
     def test_iris_model1(self):
@@ -205,7 +209,7 @@ class TestGradCheck(unittest.TestCase):
         )
 
         # Check gradient
-        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10))
+        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10), max_samples=25)
         self.assertTrue(passed)
 
     def test_mnist_model1(self):
@@ -228,7 +232,8 @@ class TestGradCheck(unittest.TestCase):
         # Define architecture
         l_in = Input(shape=x_train[0].shape)
         l = Reshape(l_in, shape=(28 * 28,))
-        l = PRelu(Dense(l, 1024))
+        l = Relu(Dense(l, 1024))
+        # l = BatchNorm(l)
         l = LeakyRelu(Dense(l, 1024), alpha=0.1)
         l_out = Softmax(Dense(l, num_classes))
 
@@ -245,7 +250,7 @@ class TestGradCheck(unittest.TestCase):
         )
 
         # Check gradient
-        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10))
+        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10), max_samples=5)
         self.assertTrue(passed)
 
 

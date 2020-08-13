@@ -7,21 +7,21 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
 
 - **Layers:**
     - Core:
-        - Input
-        - Dense
-        - Reshape / Flatten
+        - Input (GC)
+        - Dense (GC)
+        - Reshape / Flatten (GC)
         - Activations:
-            - Relu
-            - LeakyRelu
-            - Sigmoid
-            - Tanh
-            - Softmax
-            - PRelu
+            - Relu (GC)
+            - LeakyRelu (GC)
+            - Sigmoid (GC)
+            - Tanh (GC)
+            - Softmax (GC)
+            - PRelu (X)
         - Embedding
     - Regularization:
-        - BatchNorm
-        - Dropout
-        - GaussianNoise
+        - BatchNorm (X)
+        - Dropout (-)
+        - GaussianNoise (-)
     - Operators:
         - Element-wise (Operator as argument):
             - Add, Subtract, Multiply, Divide, Power, Maximum, Minimum,...

@@ -1,5 +1,7 @@
 import copy
 import numpy as np
+import random
+
 from matplotlib import pyplot as plt
 
 
@@ -109,11 +111,16 @@ def get_output(input_size, kernel_size, strides, padding, dilation_rate=None):
 
 def params2vector(params):
     vector = []
+    pi = 0
+    params_slides = []
     for li in range(len(params)):
         for kp, vp in params[li].items():
             vector.append(vp.reshape(-1, 1))
+            params_slides.append((pi, pi+vp.size))
+            pi += vp.size
+
     vector = np.concatenate(vector, axis=0)
-    return vector
+    return vector, params_slides
 
 
 def vector2params(vector, params):
@@ -126,3 +133,16 @@ def vector2params(vector, params):
             new_params[li][kp] = new_vp
             pi += vp.size
     return new_params
+
+
+def sample_params_slices(params_slides, max_samples, flat=True):
+    indices = []
+    for start_idx, end_idx in params_slides:
+        size = end_idx - start_idx
+        k = min(size, max_samples)
+        rdn_indices = random.sample(range(start_idx, end_idx), k)
+        if flat:
+            indices.extend(rdn_indices)
+        else:
+            indices.append(rdn_indices)
+    return indices
