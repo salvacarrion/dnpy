@@ -16,26 +16,26 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
             - Sigmoid (GC)
             - Tanh (GC)
             - Softmax (GC)
-            - PRelu (X)
-        - Embedding
+            - PRelu (GCX)
+        - Embedding (GCX)
     - Regularization:
-        - BatchNorm (X)
-        - Dropout (-)
-        - GaussianNoise (-)
+        - BatchNorm (GCX)
+        - Dropout (GC-)
+        - GaussianNoise (GC-)
     - Operators:
-        - Element-wise (Operator as argument):
+        - Element-wise (Operator as argument): (GCX)
             - Add, Subtract, Multiply, Divide, Power, Maximum, Minimum,...
         - Others: Average, Concatenate
     - Convolutions:
-        - Conv2D
+        - Conv2D (GCX)
         - TransposedConv2D => Pending... 
         - DepthwiseConv2D
         - PointwiseConv2D
         - LocallyConnected2D => Pending... 
         - SpatialSeparableConv* => Pending... 
     - Pooling:
-        - MaxPool2D
-        - AvgPool2D
+        - MaxPool2D  (GCX)
+        - AvgPool2D  (GCX)
         - GlobalMaxPool2D
         - GlobalAvgPool2D
     - Recurrent:

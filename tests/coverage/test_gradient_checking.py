@@ -29,12 +29,9 @@ def fw_bw(model, x_train_mb, y_train_mb):
     return losses, deltas
 
 
-def _gradient_check(model, x_train, y_train, max_samples, epsilon=10e-7, burn_in_passes=0):
+def _gradient_check(model, x_train, y_train, max_samples, epsilon, verbose=False):
     # Pass 1 ( x + 0 )
-    for i in range(burn_in_passes+1):
-        fw_bw(model, x_train, y_train)
-        if burn_in_passes > 0:
-            model.apply_grads()
+    fw_bw(model, x_train, y_train)
 
     # Get params and grads
     params0 = model.get_params(only_trainable=True)
@@ -53,7 +50,8 @@ def _gradient_check(model, x_train, y_train, max_samples, epsilon=10e-7, burn_in
 
     # Grad check
     for i, idx in enumerate(sampled_idxs):
-        print(f"{i+1}/{len(sampled_idxs)}")
+        if int(verbose) > 1:
+            print(f"{i+1}/{len(sampled_idxs)}")
         # f(theta + epsilon)
         new_vector_plus = copy.deepcopy(vparams)
         new_vector_plus[idx] += epsilon
@@ -94,23 +92,36 @@ def _gradient_check(model, x_train, y_train, max_samples, epsilon=10e-7, burn_in
     return rel_err
 
 
-def gradient_check(model, x_train, y_train, batch_size, max_error=10e-7, max_samples=5, verbose=True):
+def gradient_check(model, x_train, y_train, batch_size, max_error=10e-7, max_samples=5, burn_in_passes=0,
+                   epsilon=10e-7, verbose=True):
     # Setup
     num_samples = len(x_train[0])
     num_batches = int(num_samples / batch_size)
     if model.mode != "train":
         model.set_mode('train')
 
-    # Train mini-batches
+    # Burn-in passes
+    for i in range(burn_in_passes):
+        print(f"- Burn-in pass... ({i+1}/{burn_in_passes})")
+        for b in range(num_batches):
+            # Get minibatch
+            x_train_mb, y_train_mb = model.get_minibatch(x_train, y_train, b, batch_size)
+
+            losses, _ = fw_bw(model, x_train_mb, y_train_mb)
+            model.apply_grads()
+            print(f"\t- (Batch {b+1}/{num_batches}) Burn-in losses: {losses}")
+
+    # Grad check
     for b in range(num_batches):
         # Get minibatch
         x_train_mb, y_train_mb = model.get_minibatch(x_train, y_train, b, batch_size)
 
         # Compute error
-        rel_err = _gradient_check(model, x_train_mb, y_train_mb, max_samples)
+        rel_err = _gradient_check(model, x_train_mb, y_train_mb, max_samples=max_samples, epsilon=epsilon, verbose=verbose)
         if verbose:
             print("Batch {}/{}: Relative error={}".format(b + 1, num_batches, rel_err))
 
+        # Check relative error
         if rel_err > max_error:
             return False
     return True
@@ -212,7 +223,7 @@ class TestGradCheck(unittest.TestCase):
         passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10), max_samples=25)
         self.assertTrue(passed)
 
-    def test_mnist_model1(self):
+    def test_mnist_model_mlp(self):
         from keras import datasets
 
         # Get data
@@ -229,12 +240,13 @@ class TestGradCheck(unittest.TestCase):
         # Shuffle dataset
         x_train, y_train = utils.shuffle_dataset(x_train, y_train)
 
-        # Define architecture
         l_in = Input(shape=x_train[0].shape)
         l = Reshape(l_in, shape=(28 * 28,))
-        l = Relu(Dense(l, 1024))
+        l1 = Relu(Dense(l, 512))
+        # l2 = Relu(Dense(l1, 512))
+        # l = Add([l1, l2])
         # l = BatchNorm(l)
-        l = LeakyRelu(Dense(l, 1024), alpha=0.1)
+        l = Relu(Dense(l1, 512))
         l_out = Softmax(Dense(l, num_classes))
 
         # Build network
@@ -250,7 +262,121 @@ class TestGradCheck(unittest.TestCase):
         )
 
         # Check gradient
-        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10), max_samples=5)
+        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10), max_samples=5, verbose=2)
+        self.assertTrue(passed)
+
+    def test_mnist_model_conv(self):
+        from keras import datasets
+
+        # Get data
+        (x_train, y_train), (_, _) = datasets.mnist.load_data()
+
+        # Pre-processing
+
+        # Add channel dimension
+        x_train = np.expand_dims(x_train, axis=1)
+
+        # Normalize
+        x_train = x_train / 255.0
+
+        # Classes to categorical
+        num_classes = 10
+        y_train = utils.to_categorical(y_train, num_classes=num_classes)
+
+        # Shuffle dataset
+        x_train, y_train = utils.shuffle_dataset(x_train, y_train)
+
+        # Define architecture
+        l_in = Input(shape=x_train[0].shape)
+        l = l_in
+
+        l = Conv2D(l, filters=2, kernel_size=(3, 3), strides=(1, 1), padding="none")
+        l = MaxPool2D(l, pool_size=(3, 3), strides=(2, 2), padding="none")
+        l = Relu(l)
+        # l = GaussianNoise(l, stddev=0.1)
+
+        # l = Conv2D(l, filters=4, kernel_size=(3, 3), strides=(1, 1), padding="same")
+        # l = MaxPool2D(l, pool_size=(3, 3), strides=(2, 2), padding="none")
+        # l = Relu(l)
+
+        # l = DepthwiseConv2D(l, kernel_size=(3, 3), strides=(1, 1), padding="none")
+        # l = PointwiseConv2D(l, filters=1)
+        # l = MaxPool2D(l, pool_size=(3, 3), strides=(2, 2), padding="none")
+        # l = Relu(l)
+
+        l = Reshape(l, shape=(-1))
+        l = Dense(l, num_classes, kernel_initializer=initializers.RandomUniform())
+        l_out = Softmax(l)
+
+        # Build network
+        model = Net()
+        model.build(
+            l_in=[l_in],
+            l_out=[l_out],
+            optimizer=Adam(lr=10e-2),
+            losses=[losses.CrossEntropy()],
+            metrics=[[metrics.CategoricalAccuracy()]],
+            debug=False,
+            smart_derivatives=False,
+        )
+
+        # Check gradient
+        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/10), max_samples=5, verbose=2)
+        self.assertTrue(passed)
+
+    def test_embedding_model1(self):
+        from keras.preprocessing.text import one_hot
+        from keras.preprocessing.sequence import pad_sequences
+
+        # define documents
+        docs = ['Well done!',
+          'Good work',
+          'Great effort',
+          'nice work',
+          'Excellent!',
+          'Weak',
+          'Poor effort!',
+          'not good',
+          'poor work',
+          'Could have done better.']
+        # define class labels
+        labels = np.array([1, 1, 1, 1, 1, 0, 0, 0, 0, 0])
+        num_classes = 1  # Binary
+
+        # integer encode the documents
+        vocab_size = 20
+        encoded_docs = [one_hot(d, vocab_size) for d in docs]
+
+        # pad documents to a max length of 4 words
+        max_length = 4
+        padded_docs = pad_sequences(encoded_docs, maxlen=max_length, padding='post')
+
+        # Dataset
+        x_train = padded_docs
+        y_train = np.expand_dims(labels, axis=1)
+
+        # Define architecture
+        l_in = Input(shape=x_train[0].shape)  # Technically not needed
+        l = l_in
+        l = Embedding(l, input_dim=vocab_size, output_dim=8, input_length=max_length)
+        l = Reshape(l, shape=(-1))
+        l_out = Sigmoid(Dense(l, num_classes))
+
+        # Build network
+        model = Net()
+        model.build(
+            l_in=[l_in],
+            l_out=[l_out],
+            optimizer=Adam(lr=10e-2),
+            losses=[losses.BinaryCrossEntropy()],
+            metrics=[[metrics.BinaryAccuracy()]],
+            debug=False,
+            smart_derivatives=True,
+        )
+
+        # Check gradient
+        passed = gradient_check(model, [x_train], [y_train], batch_size=int(len(x_train)/1), max_samples=5,
+                                burn_in_passes=0)
         self.assertTrue(passed)
 
 
