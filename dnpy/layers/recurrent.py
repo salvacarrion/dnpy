@@ -1,6 +1,6 @@
 import copy
 import numpy as np
-from dnpy.layers import Layer, Tanh
+from dnpy.layers import Layer, Tanh, Reshape
 from dnpy import initializers, utils
 
 
@@ -21,8 +21,10 @@ class RNNCell:
 
 
 class RNNUnit(Layer):
-
-    def __init__(self, l_in, l_prev, time, cell, act, params, grads, stateful, name="RNNUnit"):
+    """
+    Statefulness not supported. Tricked using Reshape (with include_batch)
+    """
+    def __init__(self, l_in, l_prev, time, cell, act, params, grads, name="RNNUnit"):
         super().__init__(name=name)
         self.parents.append(l_in)
 
@@ -33,29 +35,24 @@ class RNNUnit(Layer):
         self.act = act
         self.params = params
         self.grads = grads
-        self.stateful = stateful
 
         # layers
         self.l1_cell = Layer(name="dummy")
         self.l2_act = self.act(self.l1_cell)
 
     def forward(self):
-        if self.stateful:
-            raise NotImplementedError("Stateful mode is not compatible with unrolled layer")
+        # Recurrent unit cell
+        x_t = self.l_in.output[:, self.time]
+        a_prev = self.l_prev.output if self.l_prev else 0
+        y_t, a_t = self.cell.forward(x_t, a_prev)
+        self.l1_cell.output = a_t
 
-        else:
-            # Recurrent unit cell
-            x_t = self.l_in.output[:, self.time]
-            a_prev = self.l_prev.output if self.l_prev else 0
-            y_t, a_t = self.cell.forward(x_t, a_prev)
-            self.l1_cell.output = a_t
+        # Activation
+        self.l2_act.forward()
+        l2 = self.l2_act.output
 
-            # Activation
-            self.l2_act.forward()
-            l2 = self.l2_act.output
-
-            # Output
-            self.output = l2
+        # Output
+        self.output = l2
 
     def backward(self):
         pass
@@ -69,6 +66,7 @@ class BaseRNN(Layer):
                  return_sequences=False, return_state=False,
                  stateful=False, unroll=False, name="BaseRNN"):
         super().__init__(name=name)
+        self.parents.append(l_in)
 
         # Basic properties
         self.params = params
@@ -113,9 +111,17 @@ class BaseRNN(Layer):
         self.sublayers = []
         if unroll:
             l_prev = None
-            for i in range(timesteps):
+
+            # Ugly trick to support the stateful option with the unrolled network
+            steps = timesteps
+            if stateful:
+                steps = self.parents[0].batch_size * timesteps
+                l_in = Reshape(l_in, shape=(1, steps, features), include_batch=True)
+                self.sublayers.append(l_in)
+
+            for i in range(steps):
                 l_prev = RNNUnit(l_in=l_in, l_prev=l_prev, time=i,
-                                 cell=self.cell, act=Tanh, stateful=self.stateful,
+                                 cell=self.cell, act=Tanh,
                                  params=self.params, grads=self.grads)
                 self.sublayers.append(l_prev)
         else:

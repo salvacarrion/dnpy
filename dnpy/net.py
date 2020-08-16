@@ -275,9 +275,13 @@ class Net:
                 raise KeyError("Unknown mode")
 
     def initialize(self):
+        batch_size = self.fts_layers[0].batch_size
         for l in self.fts_layers:
             l.debug = self.debug
             l.initialize(optimizer=self.optimizer)
+
+            # Propagate variables
+            l.batch_size = batch_size  # Might be needed (eg. special case RNN)
 
         # Config special derivatives (speed-up)
         if self.smart_derivatives:

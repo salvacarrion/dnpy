@@ -13,7 +13,8 @@ class Layer:
         self.output = None
         self.delta = None
 
-        self.oshape = None  # To remove
+        self.oshape = None
+        self.batch_size = None
 
         self.params = {}
         self.grads = {}

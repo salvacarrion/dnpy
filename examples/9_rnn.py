@@ -71,8 +71,8 @@ def main():
     epochs = 10
 
     # Define architecture
-    l_in = Input(shape=x_train[0].shape)
-    l = SimpleRNN(l_in, units=1, stateful=False, return_sequences=False, unroll=True)
+    l_in = Input(shape=x_train[0].shape, batch_size=batch_size)
+    l = SimpleRNN(l_in, units=1, stateful=True, return_sequences=False, unroll=True)
     l_out = Dense(l, units=1)
 
     # Build network

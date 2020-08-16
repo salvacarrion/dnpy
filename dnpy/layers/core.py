@@ -6,15 +6,17 @@ from dnpy import initializers, utils
 
 class Input(Layer):
 
-    def __init__(self, shape, name="Input"):
+    def __init__(self, shape, batch_size=None, name="Input"):
         super().__init__(name=name)
         self.oshape = shape
+        self.batch_size = batch_size
 
     def forward(self):
         pass
 
     def backward(self):
         pass
+
 
 class Embedding(Layer):
     """
@@ -133,26 +135,32 @@ class Dense(Layer):
 
 class Reshape(Layer):
 
-    def __init__(self, l_in, shape, name="Reshape"):
+    def __init__(self, l_in, shape, include_batch=False, name="Reshape"):
         super().__init__(name=name)
         self.parents.append(l_in)
+        self.include_batch = include_batch
 
-        # Check if shape is inferred
-        if shape == -1 or shape[0] == -1:
-            shape = (int(np.prod(self.parents[0].oshape)),)
+        if include_batch:
+            self.oshape = shape[1:]
+            self.oshape_batch = shape
+        else:
+            # Check if shape is inferred
+            if shape == -1 or shape[0] == -1:
+                shape = (int(np.prod(self.parents[0].oshape)),)
 
-        # Check layer compatibility
-        if np.prod(self.parents[0].oshape) != np.prod(shape):
-            raise ValueError(f"Not compatible shapes ({self.name})")
+            # Check layer compatibility
+            if np.prod(self.parents[0].oshape) != np.prod(shape):
+                raise ValueError(f"Not compatible shapes ({self.name})")
 
-        self.oshape = shape
+            self.oshape = shape
+            self.oshape_batch = None
 
     def forward(self):
-        new_shape = (-1, *self.oshape)  # Due to batch
+        new_shape = (-1, *self.oshape) if not self.include_batch else self.oshape_batch
         self.output = np.reshape(self.parents[0].output, newshape=new_shape)
 
     def backward(self):
-        new_shape = (-1, *self.parents[0].oshape)  # Due to batch
+        new_shape = (-1, *self.parents[0].oshape) if not self.include_batch else self.oshape_batch
         self.parents[0].delta = np.reshape(self.delta, newshape=new_shape)
 
 
