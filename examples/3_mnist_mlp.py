@@ -50,7 +50,7 @@ def main():
         losses=[losses.CrossEntropy()],
         metrics=[[metrics.CategoricalAccuracy()]],
         debug=False,
-        smart_derivatives=True,
+        smart_derivatives=False,
     )
 
     # Print model

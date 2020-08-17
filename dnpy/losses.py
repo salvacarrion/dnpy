@@ -94,6 +94,25 @@ class CrossEntropy(Loss):
         return d_loss
 
 
+class NLL(Loss):
+    """
+    The input given through a forward call is expected to contain log-probabilities of each class
+    """
+
+    def __init__(self, name="NLL"):
+        super().__init__(name=name)
+
+    def compute_loss(self, y_pred, y_target):
+        # Compute loss: -SUM(p(x) * q(x_))
+        loss = np.sum(y_target.astype(float) * y_pred, axis=1, keepdims=True)
+        loss = -1.0 * float(np.mean(loss, axis=0, keepdims=True))
+        return loss
+
+    def compute_delta(self, y_pred, y_target):
+        d_loss = np.exp(y_pred) - y_target
+        return d_loss
+
+
 class Hinge(Loss):
 
     def __init__(self, name="Hinge"):

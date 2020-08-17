@@ -132,5 +132,32 @@ class Softmax(Layer):
             for i in range(m):
                 SM = self.output[i, :].reshape((-1, 1))
                 jac = np.diagflat(self.output[i, :]) - np.dot(SM, SM.T)
-                self.parents[0].delta[i, :] = np.dot(jac, self.delta[i, :])
+                self.parents[0].delta[i, :] = np.dot(self.delta[i, :], jac)
 
+
+class LogSoftmax(Layer):
+    # softmax + CE = log(softmax) + CE(without log) = LogSoftmax + NNL
+    def __init__(self, l_in, stable=True, name="LogSoftmax"):
+        super().__init__(name=name)
+        self.parents.append(l_in)
+
+        # Check layer compatibility
+        if len(l_in.oshape) != 1:
+            raise ValueError(f"Expected a 1D layer ({self.name})")
+
+        self.oshape = self.parents[0].oshape
+
+        self.stable = stable
+
+    def forward(self):
+        if self.stable:
+            z = self.parents[0].output - np.max(self.parents[0].output, axis=1, keepdims=True)
+        else:
+            z = self.parents[0].output
+
+        exps = np.exp(z)
+        sums = np.sum(exps, axis=1, keepdims=True)
+        self.output = z - np.log(sums+self.epsilon)  # np.exp(output) == softmax
+
+    def backward(self):
+        self.parents[0].delta = self.delta  # exp(y_pred) - y_target

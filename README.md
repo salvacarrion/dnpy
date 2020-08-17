@@ -16,6 +16,7 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
             - Sigmoid (GC)
             - Tanh (GC)
             - Softmax (GC)
+            - LogSoftmax (GC)
             - PRelu (GCX)
         - Embedding (GCX)
     - Regularization:
@@ -57,6 +58,7 @@ Deep learning library written from scratch in Numpy. Why? Because it's fun! 🤷
     - MAE
     - CrossEntropy
     - BinaryCrossEntropy
+    - NLL
     - Hinge
 
 - **Metrics:**
