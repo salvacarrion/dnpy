@@ -67,12 +67,12 @@ def main():
     (x_test, y_test) = _load_data(df_test, n_prev=length_of_sequences)
 
     # Params *********************************
-    batch_size = int(len(x_train) / 1)
+    batch_size = 2#int(len(x_train) / 1)
     epochs = 10
 
     # Define architecture
     l_in = Input(shape=x_train[0].shape, batch_size=batch_size)
-    l = SimpleRNN(l_in, units=1, stateful=True, return_sequences=False, unroll=True)
+    l = SimpleRNN(l_in, units=1, stateful=True, return_sequences=False, unroll=False)
     l_out = Dense(l, units=1)
 
     # Build network
