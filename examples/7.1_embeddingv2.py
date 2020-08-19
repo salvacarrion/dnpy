@@ -47,23 +47,24 @@ def main():
 
     # inputs = keras.Input(shape=x_train.shape[1:])
     # x = layers.Embedding(input_dim=max_words, output_dim=8)(inputs)
-    # x = layers.SimpleRNN(32)(x)
+    # # x = layers.SimpleRNN(32)(inputs)
     # # Add a classifier
-    # # x = layers.Flatten()(x)
-    # # x = layers.Dense(64, activation="relu")(x)
+    # x = layers.Flatten()(x)
+    # x = layers.Dense(64, activation="relu")(x)
     # outputs = layers.Dense(1, activation="sigmoid")(x)
     # model = keras.Model(inputs, outputs)
     # model.summary()
     #
     # model.compile("adam", "binary_crossentropy", metrics=["accuracy"])
     # model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs)
-    # asdasd = 3
 
     # Define architecture
     l_in = Input(shape=x_train.shape[1:])
     l = l_in
     l = Embedding(l, input_dim=max_words, output_dim=8, input_length=max_length)
-    l = SimpleRNN(l, units=32, stateful=False, return_sequences=False, unroll=False)
+    l = Flatten(l)
+    l = Dense(l, units=64)
+    l = Relu(l)
     l = Dense(l, units=1)
     l_out = Sigmoid(l)
 
@@ -72,7 +73,7 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        optimizer=Adam(lr=0.1),
+        optimizer=Adam(lr=10e-3),
         losses=[losses.BinaryCrossEntropy()],
         metrics=[[metrics.BinaryAccuracy()]],
         debug=False,
@@ -88,6 +89,8 @@ def main():
                 batch_size=batch_size, epochs=epochs,
                 evaluate_epoch=False,
                 print_rate=1)
+
+    sdfsd = 33
 
     asdasd = 33
 

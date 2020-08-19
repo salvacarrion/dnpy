@@ -52,6 +52,8 @@ class Embedding(Layer):
         self.embeddings_initializer.apply(self.params, ['w1'])
 
     def forward(self):
+        assert self.parents[0].output.ndim == 2
+
         # Get embeddings corresponding to word indices (for each sample)
         word_indices = self.parents[0].output
         sentence = self.params['w1'][word_indices]
