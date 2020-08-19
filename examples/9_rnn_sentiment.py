@@ -32,17 +32,21 @@ def main():
     # Pad sequences
     x_train = pad_sequences(x_train, maxlen=max_length, padding='post')
     x_test = pad_sequences(x_test, maxlen=max_length, padding='post')
+
+    # x_train = np.expand_dims(x_train, axis=2)
+    # x_test = np.expand_dims(x_test, axis=2)
     y_train = np.expand_dims(y_train, axis=1)
     y_test = np.expand_dims(y_test, axis=1)
 
     # Params *********************************
-    batch_size = 2  # int(len(x_train) / 1)
+    batch_size = int(len(x_train) / 10)
     epochs = 10
 
     # Define architecture
     l_in = Input(shape=x_train[0].shape)
-    l = Embedding(l_in, input_dim=max_words, output_dim=16, input_length=max_length)
-    l = SimpleRNN(l, units=128, stateful=False, return_sequences=False, unroll=False)
+    l = l_in
+    l = Embedding(l, input_dim=max_words, output_dim=8, input_length=max_length)
+    l = SimpleRNN(l, units=32, stateful=False, return_sequences=False, unroll=False)
     l = Dense(l, units=1)
     l_out = Sigmoid(l)
 
@@ -51,7 +55,7 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        optimizer=Adam(lr=0.01),
+        optimizer=Adam(lr=0.1),
         losses=[losses.BinaryCrossEntropy()],
         metrics=[[metrics.BinaryAccuracy()]],
         debug=False,

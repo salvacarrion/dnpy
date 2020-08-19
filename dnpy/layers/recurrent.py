@@ -20,15 +20,15 @@ class RNNCell:
 
         return y_t, a_t
 
-    def backward(self, x_t, y_t, a_t_prev, a_t, delta_y_t, delta_a_t):
+    def backward(self, x_t, y_t, a_t_prev, a_t, delta_y_t, delta_a_t, batch_size):
         # Activation
-        self.grads['waa'] += np.outer(delta_a_t, a_t_prev)
-        self.grads['wax'] += np.outer(delta_a_t, x_t)
-        self.grads['ba'] += delta_a_t * 1.0
+        self.grads['waa'] += np.outer(delta_a_t, a_t_prev) /batch_size
+        self.grads['wax'] += np.outer(delta_a_t, x_t) /batch_size
+        self.grads['ba'] += delta_a_t * 1.0 /batch_size
 
         # Output
-        self.grads['wya'] += delta_y_t * a_t
-        self.grads['by'] += delta_y_t * 1.0
+        self.grads['wya'] += delta_y_t * a_t /batch_size
+        self.grads['by'] += delta_y_t * 1.0 /batch_size
 
         # Deltas (input)
         delta_x_t = np.dot(delta_y_t * (1 - y_t ** 2), self.params['wax'])  # for tanh
@@ -133,6 +133,7 @@ class SimpleRNN(BaseRNN):
         # Save states
         self.outputs, self.states_h = [], []
         self.y_t_deltas, self.a_t_deltas = [], []
+        self.delta_a_t = None
 
         # Must be after the "self.cell" variable
         super().__init__(l_in=l_in, units=units, cell=RNNCell, params=self.params, grads=self.grads,
@@ -205,15 +206,17 @@ class SimpleRNN(BaseRNN):
                 states_h_b = self.states_h[b]
 
                 delta_y_t_b = np.expand_dims(self.delta[b], axis=0)
-                delta_a_t_b = np.ones_like(self.params['ba'])  # Given param
-                delta_a_t = delta_a_t_b
+                if self.delta_a_t:
+                    delta_a_t = self.delta_a_t[b]
+                else:
+                    delta_a_t = np.ones_like(self.params['ba'])
 
                 timesteps, features = x_b.shape
                 for t in reversed(range(timesteps)):
                     x_t = np.expand_dims(x_b[t], axis=0)
                     y_t = np.expand_dims(y_b[t], axis=0) if self.return_sequences else np.expand_dims(y_b, axis=0)
                     a_t = np.expand_dims(states_h_b[t], axis=0)
-                    a_t_prev = np.expand_dims(states_h_b[t-1], axis=0) if t > 0 else np.zeros((1, self.units))
+                    a_t_prev = np.expand_dims(states_h_b[t-1], axis=0) if t > 0 else np.zeros_like(self.params['ba'])
 
                     if self.return_sequences:
                         delta_y_t = delta_y_t_b[t]
@@ -223,7 +226,7 @@ class SimpleRNN(BaseRNN):
                         else:
                             delta_y_t = np.ones_like(self.params['by'])
 
-                    delta_x_t, delta_a_t = shared_cell.backward(x_t, y_t, a_t_prev, a_t, delta_y_t, delta_a_t)
+                    delta_x_t, delta_a_t = shared_cell.backward(x_t, y_t, a_t_prev, a_t, delta_y_t, delta_a_t, batch_size)
 
                     # Add outputs/states
                     tmp_x_t_deltas.append(delta_x_t)

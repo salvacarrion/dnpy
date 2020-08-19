@@ -75,7 +75,7 @@ class Sigmoid(Layer):
         self.oshape = self.parents[0].oshape
 
     def forward(self):
-        self.output = 1.0 / (1.0 + np.exp(-self.parents[0].output))
+        self.output = 1.0 / (1.0 + np.exp(-self.parents[0].output+self.epsilon) +self.epsilon)
 
     def backward(self):
         self.parents[0].delta = self.delta * (self.output * (1 - self.output))
