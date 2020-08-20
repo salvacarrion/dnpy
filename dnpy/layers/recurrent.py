@@ -38,9 +38,12 @@ class RNNCell:
 
         # Deltas (input)
         delta_x_t = np.dot(delta_a_t_g, self.params['wax'])  # from a_t  ###
-        delta_a_t_prev = np.dot(delta_a_t_g, self.params['waa'])  ###
+        #delta_a_t_prev = np.dot(delta_a_t_g, self.params['waa'])  ###
         # delta_a_t = np.dot(delta_y_t_g, self.params['wya'])  # from y_t
 
+        df = np.dot((1 - a_t ** 2), self.params['waa'])
+        dy = np.dot(df, self.params['wya'])
+        delta_a_t_prev = delta_y_t_g * dy
         return delta_x_t, delta_a_t_prev
 
 
