@@ -9,32 +9,39 @@ class RNNCell:
         self.params = params
         self.grads = grads
 
-    def forward(self, x_t, a_t):
+    def forward(self, x_t, a_t_prev):
         # Activation
-        a_t_hidden = np.dot(a_t, self.params['waa'].T)
+        a_t_hidden = np.dot(a_t_prev, self.params['waa'].T)
         a_t_input = np.dot(x_t, self.params['wax'].T)
-        a_t = np.tanh(a_t_hidden + a_t_input + self.params['ba'])
+        a_t_pre_act = a_t_hidden + a_t_input + self.params['ba']
+        a_t = np.tanh(a_t_pre_act)
 
         # Output
-        y_t = np.dot(a_t, self.params['wya'].T) + self.params['by']
+        y_t_pre_act = np.dot(a_t, self.params['wya'].T) + self.params['by']
+        y_t = np.tanh(y_t_pre_act)
 
         return y_t, a_t
 
     def backward(self, x_t, y_t, a_t_prev, a_t, delta_y_t, delta_a_t, batch_size):
+        # Computer transfer derivative for the activations
+        delta_y_t_g = delta_y_t * (1 - y_t ** 2)
+        delta_a_t_g = delta_a_t * (1 - a_t ** 2) ###
+
         # Activation
-        self.grads['waa'] += np.outer(delta_a_t, a_t_prev) /batch_size
-        self.grads['wax'] += np.outer(delta_a_t, x_t) /batch_size
-        self.grads['ba'] += delta_a_t * 1.0 /batch_size
+        self.grads['wax'] += np.outer(delta_a_t_g, x_t)/batch_size  ###
+        self.grads['waa'] += np.outer(delta_a_t_g, a_t_prev)/batch_size   ###
+        self.grads['ba'] += delta_a_t_g * 1.0/batch_size  ###
 
         # Output
-        self.grads['wya'] += delta_y_t * a_t /batch_size
-        self.grads['by'] += delta_y_t * 1.0 /batch_size
+        self.grads['wya'] += delta_y_t_g * a_t/batch_size
+        self.grads['by'] += delta_y_t_g * 1.0/batch_size  ###
 
         # Deltas (input)
-        delta_x_t = np.dot(delta_y_t * (1 - y_t ** 2), self.params['wax'])  # for tanh
-        delta_a_t = np.dot(delta_a_t * (1 - a_t ** 2), self.params['wya'])  # for tanh
+        delta_x_t = np.dot(delta_a_t_g, self.params['wax'])  # from a_t  ###
+        delta_a_t_prev = np.dot(delta_a_t_g, self.params['waa'])  ###
+        # delta_a_t = np.dot(delta_y_t_g, self.params['wya'])  # from y_t
 
-        return delta_x_t, delta_a_t
+        return delta_x_t, delta_a_t_prev
 
 
 class BaseRNN(Layer):
@@ -207,9 +214,9 @@ class SimpleRNN(BaseRNN):
 
                 delta_y_t_b = np.expand_dims(self.delta[b], axis=0)
                 if self.delta_a_t:
-                    delta_a_t = self.delta_a_t[b]
+                    delta_a_t_prev = self.delta_a_t[b]
                 else:
-                    delta_a_t = np.ones_like(self.params['ba'])
+                    delta_a_t_prev = np.zeros_like(self.params['ba'])
 
                 timesteps, features = x_b.shape
                 for t in reversed(range(timesteps)):
@@ -225,12 +232,11 @@ class SimpleRNN(BaseRNN):
                             delta_y_t = delta_y_t_b
                         else:
                             delta_y_t = np.ones_like(self.params['by'])
-
-                    delta_x_t, delta_a_t = shared_cell.backward(x_t, y_t, a_t_prev, a_t, delta_y_t, delta_a_t, batch_size)
+                    delta_x_t, delta_a_t_prev = shared_cell.backward(x_t, y_t, a_t_prev, a_t, delta_y_t, delta_a_t_prev, batch_size)
 
                     # Add outputs/states
                     tmp_x_t_deltas.append(delta_x_t)
-                    tmp_a_t_deltas.append(delta_a_t)
+                    tmp_a_t_deltas.append(delta_a_t_prev)
 
                 # Concatenate outputs/states across timesteps (x_t, a_t)
                 self.x_t_deltas.append(np.concatenate(tmp_x_t_deltas, axis=0))
