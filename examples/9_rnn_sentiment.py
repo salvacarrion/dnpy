@@ -72,7 +72,7 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        optimizer=Adam(lr=0.01),
+        optimizer=Adam(lr=0.001),
         losses=[losses.BinaryCrossEntropy()],
         metrics=[[metrics.BinaryAccuracy()]],
         debug=False,

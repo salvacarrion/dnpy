@@ -22,29 +22,10 @@ class RNNCell:
 
         return y_t, h_t
 
-    def backward(self, x_t, y_t, h_t_prev, h_t, delta_y_t, delta_h_t, batch_size):
-        # Computer transfer derivative for the activations
-        dl_dy = delta_y_t  # delta d_L/d_y * d_y/d_g2
-        dy_dypre = (1 - y_t ** 2)  # y_t = tanh()
-        dypre_dh = self.params['wya']
-        dh_da = (1 - h_t ** 2)  # a_t = tanh()
+    def backward(self, x_b, y_b, h_b, delta_y_b, delta_h_b, batch_size, t, bptt_truncate):
+        pass
 
-        # Activation
-        delta_y_t_pre = (dl_dy * dy_dypre)
-        delta_a_t_pre = (np.dot(delta_y_t_pre, dypre_dh) + delta_h_t) * dh_da
-        self.grads['wax'] += np.dot(delta_a_t_pre.T, x_t)/batch_size  ##
-        self.grads['waa'] += np.dot(delta_a_t_pre.T, h_t_prev)/batch_size  ##
-        # self.grads['ba'] += delta_a_t_pre * 1.0/batch_size  ##
-
-        # Output
-        self.grads['wya'] += delta_y_t_pre * h_t /batch_size
-        self.grads['by'] += delta_y_t_pre * 1.0/batch_size
-
-        # Deltas (input)
-        delta_x_t = np.dot(delta_a_t_pre, self.params['wax'])
-        delta_a_t_prev = np.dot(delta_a_t_pre, self.params['waa'])
-
-        return delta_x_t, delta_a_t_prev
+        # return delta_x_t, delta_a_t_prev
 
 
 class BaseRNN(Layer):
@@ -213,11 +194,12 @@ class SimpleRNN(BaseRNN):
         if self.stateful:  # Share activation between batches
             pass
         else:
+            bptt_truncate = 4
             for b in range(batch_size):
                 tmp_x_t_deltas, tmp_h_t_deltas = [], []
                 x_b = self.parents[0].output[b]
                 y_b = self.output[b]
-                states_h_b = self.states_h[b]
+                h_b = self.states_h[b]
 
                 delta_y_t_b = np.expand_dims(self.delta[b], axis=0)
                 if self.delta_h_t:
@@ -229,17 +211,40 @@ class SimpleRNN(BaseRNN):
                 for t in reversed(range(timesteps)):
                     x_t = np.expand_dims(x_b[t], axis=0)
                     y_t = np.expand_dims(y_b[t], axis=0) if self.return_sequences else np.expand_dims(y_b, axis=0)
-                    h_t = np.expand_dims(states_h_b[t], axis=0)
-                    h_t_prev = np.expand_dims(states_h_b[t-1], axis=0) if t > 0 else np.zeros_like(self.params['ba'])
+                    h_t = np.expand_dims(h_b[t], axis=0)
+                    h_t_prev = np.expand_dims(h_b[t - 1], axis=0) if t > 0 else np.zeros_like(self.params['ba'])
+                    delta_y_t = delta_y_t_b if t == timesteps - 1 else np.zeros_like(self.params['by'])
 
-                    if self.return_sequences:
-                        delta_y_t = delta_y_t_b[t]
-                    else:
-                        if t == timesteps-1:
-                            delta_y_t = delta_y_t_b
-                        else:
-                            delta_y_t = np.zeros_like(self.params['by'])
-                    delta_x_t, delta_h_t_prev = shared_cell.backward(x_t, y_t, h_t_prev, h_t, delta_y_t, delta_h_t_prev, batch_size)
+                    # Computer transfer derivative for the activations
+                    dl_dy = delta_y_t  # delta d_L/d_y * d_y/d_g2
+                    dy_dypre = (1 - y_t ** 2)  # y_t = tanh()
+                    dypre_dh = self.params['wya']
+                    dh_da = (1 - h_t ** 2)  # a_t = tanh()
+
+                    # Activation
+                    delta_y_t_pre = dl_dy * dy_dypre
+                    delta_y_h_t = np.dot(delta_y_t_pre, dypre_dh)
+                    delta_h_t_pre = (delta_y_h_t + delta_h_t_prev) * dh_da  # sum errors
+
+                    # Backpropagation through time (for at most self.bptt_truncate steps)
+                    delta_t = dl_dy * np.dot(dy_dypre, dypre_dh)
+                    for bptt_step in np.arange(max(0, t - bptt_truncate), t + 1)[::-1]:
+                        x_t_ = np.expand_dims(x_b[bptt_step], axis=0)
+                        h_t_ = np.expand_dims(h_b[bptt_step - 1], axis=0)
+
+                        self.grads['wax'] += np.dot(delta_t.T, x_t_)
+                        self.grads['waa'] += np.dot(delta_t.T, h_t_)
+                        self.grads['ba'] += delta_t * 1.0
+
+                        delta_t = np.dot(delta_t, self.params['waa']) * (1 - h_t_ ** 2)
+
+                    # Output
+                    self.grads['wya'] += delta_y_t_pre * h_t
+                    self.grads['by'] += delta_y_t_pre * 1.0
+
+                    # Deltas (input)
+                    delta_h_t_prev = np.dot(delta_h_t_pre, self.params['waa'])
+                    delta_x_t = np.dot(delta_h_t_pre, self.params['wax'])
 
                     # Add outputs/states
                     tmp_x_t_deltas.append(delta_x_t)
