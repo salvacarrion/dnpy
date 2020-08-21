@@ -34,7 +34,7 @@ class BaseRNN(Layer):
                  kernel_initializer=None, recurrent_initializer=None, bias_initializer=None,
                  kernel_regularizer=None, recurrent_regularizer=None, bias_regularizer=None,
                  return_sequences=False, return_state=False,
-                 stateful=False, unroll=False, name="BaseRNN"):
+                 stateful=False, unroll=False, bptt_truncate=None, name="BaseRNN"):
         super().__init__(name=name)
         self.parents.append(l_in)
 
@@ -50,6 +50,7 @@ class BaseRNN(Layer):
         self.unroll = unroll
         self.return_sequences = return_sequences
         self.return_state = return_state
+        self.bptt_truncate = bptt_truncate
 
         # Get output
         self.oshape = (self.output_dim,)
@@ -104,7 +105,7 @@ class SimpleRNN(BaseRNN):
                  kernel_initializer=None, recurrent_initializer=None, bias_initializer=None,
                  kernel_regularizer=None, recurrent_regularizer=None, bias_regularizer=None,
                  return_sequences=False, return_state=False,
-                 stateful=False, unroll=False, name="SimpleRNN"):
+                 stateful=False, unroll=False, bptt_truncate=None, name="SimpleRNN"):
 
         # Default ouput dims
         output_dim = output_dim if output_dim else hidden_dim
@@ -137,7 +138,7 @@ class SimpleRNN(BaseRNN):
                          kernel_regularizer=kernel_regularizer, recurrent_regularizer=recurrent_regularizer,
                          bias_regularizer=bias_regularizer,
                          return_sequences=return_sequences, return_state=return_state,
-                         stateful=stateful, unroll=unroll, name=name)
+                         stateful=stateful, unroll=unroll, bptt_truncate=bptt_truncate, name=name)
 
     def initialize(self, optimizer=None):
         super().initialize(optimizer=optimizer)
@@ -188,13 +189,11 @@ class SimpleRNN(BaseRNN):
 
     def backward(self):
         batch_size = len(self.parents[0].output)
-
         self.x_t_deltas, self.h_t_deltas = [], []
         shared_cell = self.cell(params=self.params, grads=self.grads)
         if self.stateful:  # Share activation between batches
             pass
         else:
-            bptt_truncate = 4
             for b in range(batch_size):
                 tmp_x_t_deltas, tmp_h_t_deltas = [], []
                 x_b = self.parents[0].output[b]
@@ -208,11 +207,10 @@ class SimpleRNN(BaseRNN):
                     delta_h_t_prev = np.zeros_like(self.params['ba'])
 
                 timesteps, features = x_b.shape
+                bptt_truncate = self.bptt_truncate if self.bptt_truncate else timesteps
                 for t in reversed(range(timesteps)):
-                    x_t = np.expand_dims(x_b[t], axis=0)
                     y_t = np.expand_dims(y_b[t], axis=0) if self.return_sequences else np.expand_dims(y_b, axis=0)
                     h_t = np.expand_dims(h_b[t], axis=0)
-                    h_t_prev = np.expand_dims(h_b[t - 1], axis=0) if t > 0 else np.zeros_like(self.params['ba'])
                     delta_y_t = delta_y_t_b if t == timesteps - 1 else np.zeros_like(self.params['by'])
 
                     # Computer transfer derivative for the activations
