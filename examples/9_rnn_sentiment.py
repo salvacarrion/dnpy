@@ -36,8 +36,8 @@ def main():
     x_train = pad_sequences(x_train, maxlen=max_length, padding='post')
     x_test = pad_sequences(x_test, maxlen=max_length, padding='post')
 
-    # x_train = np.expand_dims(x_train, axis=2)
-    # x_test = np.expand_dims(x_test, axis=2)
+    x_train = np.expand_dims(x_train, axis=2)
+    x_test = np.expand_dims(x_test, axis=2)
     y_train = np.expand_dims(y_train, axis=1)
     y_test = np.expand_dims(y_test, axis=1)
 
@@ -62,8 +62,8 @@ def main():
     # Define architecture
     l_in = Input(shape=x_train.shape[1:])
     l = l_in
-    l = Embedding(l, input_dim=max_words, output_dim=8, input_length=max_length)
-    l = SimpleRNN(l, hidden_dim=32, stateful=False, return_sequences=False, unroll=False)
+    # l = Embedding(l, input_dim=max_words, output_dim=8, input_length=max_length)
+    l = SimpleRNN(l, hidden_dim=32, stateful=False, return_sequences=False, unroll=False, bptt_truncate=10)
     l = Dense(l, units=1)
     l_out = Sigmoid(l)
 
@@ -72,7 +72,7 @@ def main():
     mymodel.build(
         l_in=[l_in],
         l_out=[l_out],
-        optimizer=Adam(lr=0.001),
+        optimizer=Adam(lr=0.01),
         losses=[losses.BinaryCrossEntropy()],
         metrics=[[metrics.BinaryAccuracy()]],
         debug=False,

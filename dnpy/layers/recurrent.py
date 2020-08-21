@@ -226,15 +226,15 @@ class SimpleRNN(BaseRNN):
 
                     # Backpropagation through time (for at most self.bptt_truncate steps)
                     delta_t = dl_dy * np.dot(dy_dypre, dypre_dh)
-                    for bptt_step in np.arange(max(0, t - bptt_truncate), t + 1)[::-1]:
+                    for bptt_step in reversed(range(max(0, t - bptt_truncate), t + 1)):
                         x_t_ = np.expand_dims(x_b[bptt_step], axis=0)
-                        h_t_ = np.expand_dims(h_b[bptt_step - 1], axis=0)
+                        h_t_ = np.expand_dims(h_b[bptt_step - 1], axis=0) if bptt_step > 0 else np.zeros_like(self.params['ba'])
 
                         self.grads['wax'] += np.dot(delta_t.T, x_t_)
                         self.grads['waa'] += np.dot(delta_t.T, h_t_)
                         self.grads['ba'] += delta_t * 1.0
 
-                        delta_t = np.dot(delta_t, self.params['waa']) * (1 - h_t_ ** 2)
+                        delta_t = np.dot(delta_t * (1 - h_t_ ** 2), self.params['waa'])
 
                     # Output
                     self.grads['wya'] += delta_y_t_pre * h_t
@@ -245,20 +245,20 @@ class SimpleRNN(BaseRNN):
                     delta_x_t = np.dot(delta_h_t_pre, self.params['wax'])
 
                     # Add outputs/states
-                    tmp_x_t_deltas.append(delta_x_t)
                     tmp_h_t_deltas.append(delta_h_t_prev)
+                    tmp_x_t_deltas.append(delta_x_t)
 
                 # Set original order
-                tmp_x_t_deltas.reverse()
                 tmp_h_t_deltas.reverse()
+                tmp_x_t_deltas.reverse()
 
                 # Concatenate outputs/states across timesteps (x_t, h_t)
-                self.x_t_deltas.append(np.concatenate(tmp_x_t_deltas, axis=0))
                 self.h_t_deltas.append(np.concatenate(tmp_h_t_deltas, axis=0))
+                self.x_t_deltas.append(np.concatenate(tmp_x_t_deltas, axis=0))
 
         # Concatenate outputs/states across batches (x_t, a_t)
-        self.x_t_deltas = np.stack(self.x_t_deltas, axis=0)
         self.h_t_deltas = np.stack(self.h_t_deltas, axis=0)
+        self.x_t_deltas = np.stack(self.x_t_deltas, axis=0)
 
         self.parents[0].delta = self.x_t_deltas
         asdas = 33
