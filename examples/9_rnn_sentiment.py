@@ -63,7 +63,7 @@ def main():
     l_in = Input(shape=x_train.shape[1:])
     l = l_in
     # l = Embedding(l, input_dim=max_words, output_dim=8, input_length=max_length)
-    l = SimpleRNN(l, hidden_dim=32, stateful=False, return_sequences=False, unroll=False, bptt_truncate=10)
+    l = SimpleRNN(l, hidden_dim=32, stateful=False, return_sequences=False, unroll=False, bptt_truncate=4)
     l = Dense(l, units=1)
     l_out = Sigmoid(l)
 

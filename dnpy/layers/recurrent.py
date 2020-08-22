@@ -98,7 +98,6 @@ class BaseRNN(Layer):
             #                           cell=self.cell, params=self.params, grads=self.grads)
             #     self.sublayers.append(l_cell_prev)
 
-
 class SimpleRNN(BaseRNN):
 
     def __init__(self, l_in, hidden_dim, output_dim=None,
@@ -209,8 +208,10 @@ class SimpleRNN(BaseRNN):
                 timesteps, features = x_b.shape
                 bptt_truncate = self.bptt_truncate if self.bptt_truncate else timesteps
                 for t in reversed(range(timesteps)):
+                    x_t = np.expand_dims(x_b[t], axis=0)
                     y_t = np.expand_dims(y_b[t], axis=0) if self.return_sequences else np.expand_dims(y_b, axis=0)
                     h_t = np.expand_dims(h_b[t], axis=0)
+                    h_t_prev = np.expand_dims(h_b[t-1], axis=0) if t > 0 else np.zeros_like(self.params['ba'])
                     delta_y_t = delta_y_t_b if t == timesteps - 1 else np.zeros_like(self.params['by'])
 
                     # Computer transfer derivative for the activations
@@ -222,19 +223,20 @@ class SimpleRNN(BaseRNN):
                     # Activation
                     delta_y_t_pre = dl_dy * dy_dypre
                     delta_y_h_t = np.dot(delta_y_t_pre, dypre_dh)
+
                     delta_h_t_pre = (delta_y_h_t + delta_h_t_prev) * dh_da  # sum errors
 
                     # Backpropagation through time (for at most self.bptt_truncate steps)
-                    delta_t = dl_dy * np.dot(dy_dypre, dypre_dh)
+                    dprev_s = delta_h_t_pre
                     for bptt_step in reversed(range(max(0, t - bptt_truncate), t + 1)):
                         x_t_ = np.expand_dims(x_b[bptt_step], axis=0)
                         h_t_ = np.expand_dims(h_b[bptt_step - 1], axis=0) if bptt_step > 0 else np.zeros_like(self.params['ba'])
 
-                        self.grads['wax'] += np.dot(delta_t.T, x_t_)
-                        self.grads['waa'] += np.dot(delta_t.T, h_t_)
-                        self.grads['ba'] += delta_t * 1.0
+                        self.grads['waa'] += np.dot(dprev_s.T, h_t_)
+                        self.grads['wax'] += np.dot(dprev_s.T, x_t_)
+                        self.grads['ba'] += dprev_s * 1.0
 
-                        delta_t = np.dot(delta_t * (1 - h_t_ ** 2), self.params['waa'])
+                        dprev_s = np.dot(dprev_s * (1 - h_t_ ** 2), self.params['waa'])
 
                     # Output
                     self.grads['wya'] += delta_y_t_pre * h_t
