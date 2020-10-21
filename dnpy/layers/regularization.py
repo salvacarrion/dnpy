@@ -19,7 +19,7 @@ class Dropout(Layer):
             self.gate = (np.random.random(self.parents[0].output.shape) > self.rate).astype(float)
             self.output = self.parents[0].output * self.gate
         else:
-            self.output = self.parents[0].output
+            self.output = self.parents[0].output * (1-self.rate)
 
     def backward(self):
         self.parents[0].delta = self.delta * self.gate
