@@ -488,6 +488,40 @@ class TestStringMethods(unittest.TestCase):
         l1.backward()
         self.assertTrue(np.all(t1_ref_back == l0.delta))
 
+    def test_softmax(self):
+        # Test 1
+        t1_in = np.array([
+                [0.0303,  0.2418, -1.9007],
+                [-4.7348, -0.7624, -0.5518],
+        ])
+        t1_ref = np.array([
+                [0.42007398, 0.51901399, 0.06091204],
+                [0.00835603, 0.44380405, 0.54783992],
+        ])
+
+        t1_delta = np.array([
+                [1, 2, 3],
+                [3, 2, 1],
+        ])
+        t1_ref_back = np.array([
+                [-0.26919939,  0.18641007,  0.08278932],
+                [0.01286397,  0.23942514, -0.25228911],
+        ])
+
+        # Test 1
+        # Forward
+        l0 = Input(shape=t1_in[0].shape)
+        l0.output = t1_in
+        l1 = Softmax(l0, stable=True)
+        l1.forward()
+        self.assertTrue(np.allclose(t1_ref, l1.output, atol=1e-4))
+
+        # Backward
+        l1.delta = t1_delta
+        l1.backward()
+        self.assertTrue(np.allclose(t1_ref_back, l0.delta, atol=1e-4))
+
+
 
 if __name__ == "__main__":
     unittest.main()
