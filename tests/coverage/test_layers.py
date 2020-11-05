@@ -8,7 +8,7 @@ from dnpy.optimizers import *
 import numpy as np
 
 
-class TestStringMethods(unittest.TestCase):
+class TestLayersMethods(unittest.TestCase):
 
     def test_outputs(self):
         r1 = utils.get_output(input_size=(4, 4), kernel_size=(3, 3), strides=(1, 1), padding=(0, 0))
