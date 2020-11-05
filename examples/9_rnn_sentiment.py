@@ -3,6 +3,7 @@ from keras import layers
 from keras import datasets
 from keras.preprocessing.text import one_hot
 from keras.preprocessing.sequence import pad_sequences
+from keras.utils import to_categorical
 
 import numpy as np
 from dnpy.layers import *
@@ -36,18 +37,25 @@ def main():
     x_train = pad_sequences(x_train, maxlen=max_length, padding='post')
     x_test = pad_sequences(x_test, maxlen=max_length, padding='post')
 
-    x_train = np.expand_dims(x_train, axis=2)
-    x_test = np.expand_dims(x_test, axis=2)
+    # To categorical (one-hot)
+    x_tmp, y_tmp = [], []
+    for i in range(len(x_train)):
+        x_t = to_categorical(x_train[i], num_classes=max_words)
+        x_tmp.append(x_t)
+    x_train = np.stack(x_tmp, axis=0)
+
+    # x_train = np.expand_dims(x_train, axis=2)
+    # x_test = np.expand_dims(x_test, axis=2)
     y_train = np.expand_dims(y_train, axis=1)
     y_test = np.expand_dims(y_test, axis=1)
 
     # Params *********************************
     batch_size = int(len(x_train) / 8)
-    epochs = 100
+    epochs = 30
 
-    # inputs = keras.Input(shape=x_train.shape[1:])
+    # inputs = keras.Input(shape=(max_length, max_words))
     # # x = layers.Embedding(input_dim=max_words, output_dim=8)(inputs)
-    # x = layers.SimpleRNN(32)(inputs)
+    # x = layers.SimpleRNN(32, unroll=True)(inputs)
     # # Add a classifier
     # # x = layers.Flatten()(x)
     # # x = layers.Dense(64, activation="relu")(x)
@@ -57,15 +65,20 @@ def main():
     #
     # model.compile("adam", "binary_crossentropy", metrics=["accuracy"])
     # model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs)
-    # asdasd = 3
+    # # asdasd = 3
+    #
+    #
 
     # Define architecture
-    l_in = Input(shape=x_train.shape[1:])
+    l_in = Input(shape=(max_length, max_words))
     l = l_in
+    # l = Reshape(l, -1)
+    # l = Dense(l, 32)
     # l = Embedding(l, input_dim=max_words, output_dim=8, input_length=max_length)
-    l = SimpleRNN(l, hidden_dim=32, stateful=False, return_sequences=False, unroll=False, bptt_truncate=4)
-    l = Dense(l, units=1)
-    l_out = Sigmoid(l)
+    l_rnn = SimpleRNN(l, hidden_dim=32, stateful=False, return_sequences=False, unroll=False, bptt_truncate=4)
+    l = l_rnn
+    l_dense = Dense(l, units=1)
+    l_out = Sigmoid(l_dense)
 
     # Build network
     mymodel = Net()
@@ -82,11 +95,25 @@ def main():
     # Print model
     mymodel.summary()
 
+    wba = np.load("/Users/salvacarrion/Documents/Programming/Python/dnpy/examples/data/simple_rnn-simple_rnn_cell-bias0.npy")
+    wax = np.load("/Users/salvacarrion/Documents/Programming/Python/dnpy/examples/data/simple_rnn-simple_rnn_cell-kernel0.npy")
+    waa = np.load("/Users/salvacarrion/Documents/Programming/Python/dnpy/examples/data/simple_rnn-simple_rnn_cell-recurrent_kernel0.npy")
+
+    l_rnn.params['wba'] = np.expand_dims(wba, axis=0)
+    l_rnn.params['wax'] = wax.T
+    l_rnn.params['waa'] = waa.T
+
+    b1 = np.load("/Users/salvacarrion/Documents/Programming/Python/dnpy/examples/data/dense-bias0.npy")
+    w1 = np.load("/Users/salvacarrion/Documents/Programming/Python/dnpy/examples/data/dense-kernel0.npy")
+
+    l_dense.params['b1'] = np.expand_dims(b1, axis=0)
+    l_dense.params['w1'] = w1
+
     # Train
     mymodel.fit([x_train], [y_train],
                 x_test=None, y_test=None,
                 batch_size=batch_size, epochs=epochs,
-                evaluate_epoch=False,
+                evaluate_epoch=True,
                 print_rate=1)
 
     asdasd = 33

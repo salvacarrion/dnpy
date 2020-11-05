@@ -26,13 +26,13 @@ def check_datasets(x_train, y_train, x_test, y_test):
     if x_train and y_train:
         # Check number of samples [x1, x2,...] for each input [X1, X2,...]
         for x_i, y_i in zip(x_train, y_train):
-            assert x_i.shape[0] == y_i.shape[0]  # num. samples
+            assert len(x_i) == len(y_i)  # num. samples
 
     # Only test
     if x_test and y_test:
         # Check number of samples (x/y test)
         for x_i, y_i in zip(x_test, y_test):
-            assert x_i.shape[0] == y_i.shape[0]  # num. samples
+            assert len(x_i) == len(y_i)  # num. samples
 
 
 def bts_helper(node, mark_temp, mark_permanent, stack):

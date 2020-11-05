@@ -17,10 +17,10 @@ class RNNCell:
         h_t = np.tanh(a_t)
 
         # Output
-        y_t_pre_act = np.dot(h_t, self.params['wya'].T) + self.params['by']
-        y_t = np.tanh(y_t_pre_act)
+        # y_t_pre_act = np.dot(h_t, self.params['wya'].T) + self.params['by']
+        # y_t = np.tanh(y_t_pre_act)
 
-        return y_t, h_t
+        return None, h_t
 
     def backward(self, x_b, y_b, h_b, delta_y_b, delta_h_b, batch_size, t, bptt_truncate):
         pass
@@ -53,7 +53,7 @@ class BaseRNN(Layer):
         self.bptt_truncate = bptt_truncate
 
         # Get output
-        self.oshape = (self.output_dim,)
+        self.oshape = (None, self.output_dim) if self.return_sequences else (self.output_dim,)
 
         # Initialization: param
         if kernel_initializer is None:
@@ -98,6 +98,7 @@ class BaseRNN(Layer):
             #                           cell=self.cell, params=self.params, grads=self.grads)
             #     self.sublayers.append(l_cell_prev)
 
+
 class SimpleRNN(BaseRNN):
 
     def __init__(self, l_in, hidden_dim, output_dim=None,
@@ -114,14 +115,14 @@ class SimpleRNN(BaseRNN):
         self.params = {'waa': np.zeros((hidden_dim, hidden_dim)),
                        'wax': np.zeros((hidden_dim, features)),
                        'ba': np.zeros((1, hidden_dim)),
-                       'wya': np.zeros((output_dim, hidden_dim)),
-                       'by': np.zeros((1, output_dim))
+                       # 'wya': np.zeros((output_dim, hidden_dim)),
+                       # 'by': np.zeros((1, output_dim))
                        }
         self.grads = {'waa': np.zeros_like(self.params['waa']),
                       'wax': np.zeros_like(self.params['wax']),
                       'ba': np.zeros_like(self.params['ba']),
-                      'wya': np.zeros_like(self.params['wya']),
-                      'by': np.zeros_like(self.params['by']),
+                      # 'wya': np.zeros_like(self.params['wya']),
+                      # 'by': np.zeros_like(self.params['by']),
                       }
 
         # Save states
@@ -143,11 +144,11 @@ class SimpleRNN(BaseRNN):
         super().initialize(optimizer=optimizer)
 
         # Initialize params
-        self.kernel_initializer.apply(self.params, ['wya'])
         self.recurrent_initializer.apply(self.params, ['waa'])
-        self.recurrent_initializer.apply(self.params, ['wax'])
+        self.kernel_initializer.apply(self.params, ['wax'])
         self.bias_initializer.apply(self.params, ['ba'])
-        self.bias_initializer.apply(self.params, ['by'])
+        # self.kernel_initializer.apply(self.params, ['wya'])
+        # self.bias_initializer.apply(self.params, ['by'])
 
     def forward(self):
         batch_size = len(self.parents[0].output)
@@ -159,17 +160,17 @@ class SimpleRNN(BaseRNN):
         else:
             for b in range(batch_size):
                 tmp_sequences, tmp_states_h = [], []
-                a_t = np.zeros_like(self.params['ba'])
+                h_t = np.zeros_like(self.params['ba'])
                 sample_b = np.array(self.parents[0].output[b])  # From list to array
                 timesteps, features = sample_b.shape
 
                 for t in range(timesteps):
                     x_t = sample_b[t]
-                    y_t, a_t = shared_cell.forward(x_t, a_t)
+                    _, h_t = shared_cell.forward(x_t, h_t)
 
                     # Add outputs/states
-                    tmp_states_h.append(a_t)
-                    tmp_sequences.append(y_t)
+                    tmp_states_h.append(h_t)
+                    tmp_sequences.append(h_t)
 
                 # Concatenate outputs/states across timesteps (y_t, a_t)
                 self.states_h.append(np.concatenate(tmp_states_h, axis=0))
@@ -189,7 +190,7 @@ class SimpleRNN(BaseRNN):
     def backward(self):
         batch_size = len(self.parents[0].output)
         self.x_t_deltas, self.h_t_deltas = [], []
-        shared_cell = self.cell(params=self.params, grads=self.grads)
+
         if self.stateful:  # Share activation between batches
             pass
         else:
@@ -212,22 +213,22 @@ class SimpleRNN(BaseRNN):
                     y_t = np.expand_dims(y_b[t], axis=0) if self.return_sequences else np.expand_dims(y_b, axis=0)
                     h_t = np.expand_dims(h_b[t], axis=0)
                     h_t_prev = np.expand_dims(h_b[t-1], axis=0) if t > 0 else np.zeros_like(self.params['ba'])
-                    delta_y_t = delta_y_t_b if t == timesteps - 1 else np.zeros_like(self.params['by'])
+                    delta_y_t = delta_y_t_b if t == timesteps - 1 else np.zeros_like(self.params['ba'])
 
                     # Computer transfer derivative for the activations
-                    dl_dy = delta_y_t  # delta d_L/d_y * d_y/d_g2
-                    dy_dypre = (1 - y_t ** 2)  # y_t = tanh()
-                    dypre_dh = self.params['wya']
+                    # dl_dy = delta_y_t  # delta d_L/d_y * d_y/d_g2
+                    # dy_dypre = (1 - y_t ** 2)  # y_t = tanh()
+                    # dypre_dh = self.params['wya']
                     dh_da = (1 - h_t ** 2)  # a_t = tanh()
 
                     # Activation
-                    delta_y_t_pre = dl_dy * dy_dypre
-                    delta_y_h_t = np.dot(delta_y_t_pre, dypre_dh)
+                    # delta_y_t_pre = dl_dy * dy_dypre
+                    # delta_y_h_t = np.dot(delta_y_t_pre, dypre_dh)
 
-                    delta_h_t_pre = (delta_y_h_t + delta_h_t_prev) * dh_da  # sum errors
+                    delta_h_t_pre = (delta_y_t + delta_h_t_prev) * dh_da  # sum errors
 
                     # Backpropagation through time (for at most self.bptt_truncate steps)
-                    dprev_s = delta_h_t_pre
+                    dprev_s = np.array(delta_h_t_pre)
                     for bptt_step in reversed(range(max(0, t - bptt_truncate), t + 1)):
                         x_t_ = np.expand_dims(x_b[bptt_step], axis=0)
                         h_t_ = np.expand_dims(h_b[bptt_step - 1], axis=0) if bptt_step > 0 else np.zeros_like(self.params['ba'])
@@ -238,9 +239,9 @@ class SimpleRNN(BaseRNN):
 
                         dprev_s = np.dot(dprev_s * (1 - h_t_ ** 2), self.params['waa'])
 
-                    # Output
-                    self.grads['wya'] += delta_y_t_pre * h_t
-                    self.grads['by'] += delta_y_t_pre * 1.0
+                    # # Output
+                    # self.grads['wya'] += delta_y_t_pre * h_t
+                    # self.grads['by'] += delta_y_t_pre * 1.0
 
                     # Deltas (input)
                     delta_h_t_prev = np.dot(delta_h_t_pre, self.params['waa'])
